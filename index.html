@@ -132,24 +132,61 @@ const micBtn = $('micBtn'), heardEl = $('heardText');
 const diffTag = $('diffTag');
 
 /* =========================================================
-   语音朗读（带回调）
+   语音朗读（带回调，修复无声）
    ========================================================= */
+let voiceUnlocked = false;
+
+/* 在用户手势里调用一次，解锁浏览器语音合成 */
+function unlockVoice() {
+  if (voiceUnlocked || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0.01;
+    u.rate = 1;
+    u.lang = 'zh-CN';
+    window.speechSynthesis.speak(u);
+    voiceUnlocked = true;
+  } catch (e) {}
+}
+
 function speak(text, onDone) {
   if (!text || !('speechSynthesis' in window)) { if (onDone) onDone(); return; }
   try {
     window.speechSynthesis.cancel();
+
+    // 选一个中文语音，避免用默认英文嗓子念中文
+    const voices = window.speechSynthesis.getVoices();
+    const zhVoice = voices.find(v => v.lang && v.lang.toLowerCase().includes('zh'));
+
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN'; u.rate = 1.1; u.pitch = 1.6;
-    u.onend = () => { if (onDone) onDone(); };
-    u.onerror = () => { if (onDone) onDone(); };
+    u.lang = 'zh-CN';
+    u.rate = 1.0;
+    u.pitch = 1.5;
+    if (zhVoice) u.voice = zhVoice;
+
+    let done = false;
+    const finish = () => { if (!done) { done = true; if (onDone) onDone(); } };
+    u.onend = finish;
+    u.onerror = finish;
+
+    // 兜底：万一 onend 不触发，按文本长度估算一个超时
+    const fallbackMs = Math.max(1200, text.length * 220);
+    setTimeout(finish, fallbackMs);
+
     window.speechSynthesis.speak(u);
   } catch (e) { if (onDone) onDone(); }
 }
 
-/* 把算式念成中文 */
+/* 把算式念成中文口语 */
 function speakQuestion(q, onDone) {
   const spoken = q.text.replace(/\+/g, '加').replace(/−/g, '减').replace(/\s/g, '');
   speak(`${spoken}，等于多少？`, onDone);
+}
+
+/* 有些浏览器语音列表是异步加载的，预热一下 */
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {};
+  window.speechSynthesis.getVoices();
 }
 
 /* =========================================================
@@ -359,7 +396,6 @@ function makeOptions(ans) {
 function nextQuestion() {
   if (!running) return;
 
-  // 先停旧监听
   autoListen = false;
   if (recognition && listening) {
     try { recognition.stop(); } catch (e) {}
@@ -385,7 +421,7 @@ function nextQuestion() {
   bubble.textContent = `悟空：第 ${qCount} 题，听俺念！`;
   if (voiceSupported) micBtn.disabled = false;
 
-  // ★ 先朗读题目，朗读结束后再开麦
+  // 先朗读，朗读完再开麦
   autoListen = true;
   speakQuestion(q, () => {
     setTimeout(() => {
@@ -556,12 +592,22 @@ function showResult(score, best, isNewBest, comment) {
     });
   });
 
+  // ★ 关键：在用户点击的同步上下文里解锁语音 + 启动麦克风
   $('startBtn').addEventListener('click', () => {
     $('startOverlay').style.display = 'none';
+
+    // 1. 解锁语音合成（同步执行，必须在 click 里）
+    unlockVoice();
+
+    // 2. 解锁后立刻念一句欢迎语，确认能出声
+    speak('俺老孙来也！开始速算！');
+
+    // 3. 启动麦克风（同样在 click 里，触发权限弹窗）
     if (voiceSupported) {
       autoListen = true;
       try { recognition.start(); } catch (e) {}
     }
+
     startGame();
   });
 })();

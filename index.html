@@ -66,8 +66,6 @@ body{margin:0;min-height:100vh;background:radial-gradient(circle at 30% 20%,#2a3
 .start p{color:#ffe9b8;margin-bottom:12px;font-size:.9rem;line-height:1.5}
 .start .hint{color:#ffb800;font-size:.8rem;margin-bottom:16px;max-width:280px}
 .start .btn{max-width:240px}
-
-/* 难度选择 */
 .diff-wrap{display:flex;gap:12px;margin-bottom:18px;width:100%;max-width:300px}
 .diff-btn{flex:1;background:linear-gradient(180deg,#fff9e6,#ffe9b8);border:3px solid #b8860b;border-radius:20px;padding:14px 8px;font-size:1rem;font-weight:900;color:#2d1f0f;box-shadow:0 5px 0 #8b6b3c;cursor:pointer;font-family:inherit;transition:.15s;line-height:1.4}
 .diff-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #8b6b3c}
@@ -82,7 +80,6 @@ body{margin:0;min-height:100vh;background:radial-gradient(circle at 30% 20%,#2a3
 <div class="start" id="startOverlay">
   <h1>🐵 悟空速算小能手</h1>
   <p>先选个难度吧！</p>
-
   <div class="diff-wrap" id="diffWrap">
     <button class="diff-btn sel" data-diff="easy">
       <span class="d-emoji">🐣</span>10 以内
@@ -93,8 +90,7 @@ body{margin:0;min-height:100vh;background:radial-gradient(circle at 30% 20%,#2a3
       <span class="d-sub">含进退位</span>
     </button>
   </div>
-
-  <p class="hint">💡 点“俺来也”后会请求麦克风权限<br>之后每题自动听你说话，也可点按钮作答</p>
+  <p class="hint">💡 点“俺来也”后会请求麦克风权限<br>之后每题悟空念题，念完自动听你回答</p>
   <button class="btn" id="startBtn">俺来也 ➜</button>
 </div>
 
@@ -125,7 +121,7 @@ body{margin:0;min-height:100vh;background:radial-gradient(circle at 30% 20%,#2a3
 const TOTAL_TIME = 60;
 let timeLeft = TOTAL_TIME, score = 0, combo = 0;
 let running = false, timerId = null, currentAnswer = null, locked = false, qCount = 0;
-let difficulty = 'easy'; // 'easy' = 10以内, 'hard' = 20以内
+let difficulty = 'easy';
 
 const $ = id => document.getElementById(id);
 const timeEl = $('timeLeft'), scoreEl = $('score');
@@ -134,6 +130,27 @@ const msg = $('messageBox'), bubble = $('dialogueBubble');
 const avatar = $('avatar'), comboBox = $('comboBox');
 const micBtn = $('micBtn'), heardEl = $('heardText');
 const diffTag = $('diffTag');
+
+/* =========================================================
+   语音朗读（带回调）
+   ========================================================= */
+function speak(text, onDone) {
+  if (!text || !('speechSynthesis' in window)) { if (onDone) onDone(); return; }
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 1.1; u.pitch = 1.6;
+    u.onend = () => { if (onDone) onDone(); };
+    u.onerror = () => { if (onDone) onDone(); };
+    window.speechSynthesis.speak(u);
+  } catch (e) { if (onDone) onDone(); }
+}
+
+/* 把算式念成中文 */
+function speakQuestion(q, onDone) {
+  const spoken = q.text.replace(/\+/g, '加').replace(/−/g, '减').replace(/\s/g, '');
+  speak(`${spoken}，等于多少？`, onDone);
+}
 
 /* =========================================================
    语音识别
@@ -183,7 +200,7 @@ function setupVoice() {
     } else if (e.error === 'network') {
       setMsg('语音识别需要联网，或换按钮作答', 'error');
     } else if (e.error === 'aborted') {
-      // 主动停止，不提示
+      // 主动停止
     } else {
       setMsg('语音识别出错，用按钮选吧', 'error');
     }
@@ -271,17 +288,8 @@ function handleVoiceAnswer(rawText) {
 }
 
 /* =========================================================
-   悟空语音
+   工具
    ========================================================= */
-function speak(text) {
-  if (!text || !('speechSynthesis' in window)) return;
-  try {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN'; u.rate = 1.1; u.pitch = 1.6;
-    window.speechSynthesis.speak(u);
-  } catch (e) {}
-}
 function mood(m) {
   avatar.classList.remove('happy', 'sad');
   if (m) avatar.classList.add(m);
@@ -294,21 +302,18 @@ function setMsg(t, type) {
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
 /* =========================================================
-   出题（核心：按难度分支出题逻辑）
+   出题
    ========================================================= */
 function makeQuestion() {
   if (difficulty === 'easy') {
-    // 10 以内加减，结果不超过 10，减法结果 >= 0
     const useAdd = Math.random() < 0.5;
     let a, b, ans, text;
     if (useAdd) {
-      // a + b <= 10
       a = rand(1, 9);
       b = rand(1, 10 - a);
       ans = a + b;
       text = `${a} + ${b}`;
     } else {
-      // a - b >= 0, a <= 10
       a = rand(2, 10);
       b = rand(1, a);
       ans = a - b;
@@ -316,7 +321,6 @@ function makeQuestion() {
     }
     return { text, ans };
   } else {
-    // 20 以内加减，加法结果 10~20，减法结果 1~19，尽量含进退位
     const useAdd = Math.random() < 0.5;
     let a, b, ans, text;
     if (useAdd) {
@@ -350,11 +354,12 @@ function makeOptions(ans) {
 }
 
 /* =========================================================
-   渲染 & 自动续听
+   渲染：出题 → 朗读 → 开麦
    ========================================================= */
 function nextQuestion() {
   if (!running) return;
 
+  // 先停旧监听
   autoListen = false;
   if (recognition && listening) {
     try { recognition.stop(); } catch (e) {}
@@ -377,15 +382,18 @@ function nextQuestion() {
     optsEl.appendChild(btn);
   });
 
-  bubble.textContent = `悟空：第 ${qCount} 题，算算看！`;
+  bubble.textContent = `悟空：第 ${qCount} 题，听俺念！`;
   if (voiceSupported) micBtn.disabled = false;
 
+  // ★ 先朗读题目，朗读结束后再开麦
   autoListen = true;
-  if (micAllowed) {
+  speakQuestion(q, () => {
     setTimeout(() => {
-      if (autoListen && running && !locked) startListening(true);
+      if (autoListen && running && !locked && micAllowed) {
+        startListening(true);
+      }
     }, 400);
-  }
+  });
 }
 
 /* =========================================================
@@ -461,7 +469,6 @@ function startGame() {
   scoreEl.textContent = '0';
   comboBox.classList.remove('show');
 
-  // 更新难度标签
   if (difficulty === 'easy') {
     diffTag.textContent = '10内';
     diffTag.style.background = '#4caf50';
@@ -471,7 +478,6 @@ function startGame() {
   }
 
   setMsg(difficulty === 'easy' ? '10以内加减，加油！' : '20以内加减，挑战开始！');
-  speak(difficulty === 'easy' ? '俺老孙来也！十以内，开始！' : '俺老孙来也！二十以内，挑战！');
   startTimer();
   nextQuestion();
 }
@@ -487,7 +493,6 @@ function endGame() {
     try { recognition.stop(); } catch (e) {}
   }
 
-  // 最高分按难度分开存
   const key = 'wukong_math_best_' + difficulty;
   const best = Number(localStorage.getItem(key) || 0);
   const isNewBest = score > best;
@@ -522,7 +527,6 @@ function showResult(score, best, isNewBest, comment) {
   $('againBtn').addEventListener('click', () => { ov.remove(); startGame(); });
   $('changeDiffBtn').addEventListener('click', () => {
     ov.remove();
-    // 回到开始页重新选难度
     $('startOverlay').style.display = 'flex';
   });
 }
@@ -544,7 +548,6 @@ function showResult(score, best, isNewBest, comment) {
   setupVoice();
   micBtn.addEventListener('click', () => startListening(false));
 
-  // 难度选择
   document.querySelectorAll('.diff-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('sel'));
@@ -553,15 +556,12 @@ function showResult(score, best, isNewBest, comment) {
     });
   });
 
-  // 开始按钮
   $('startBtn').addEventListener('click', () => {
     $('startOverlay').style.display = 'none';
-
     if (voiceSupported) {
       autoListen = true;
       try { recognition.start(); } catch (e) {}
     }
-
     startGame();
   });
 })();

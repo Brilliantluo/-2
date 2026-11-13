@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>悟空速算小能手</title>
+<style>
+*{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 30% 20%,#2a3f5f,#0d1117 80%);font-family:'PingFang SC','Microsoft YaHei',sans-serif;display:flex;justify-content:center;align-items:center;padding:10px;overflow:hidden}
+@keyframes twinkle{0%{opacity:.2}100%{opacity:1}}
+.star{position:fixed;width:3px;height:3px;background:#fff;border-radius:50%;animation:twinkle 2s infinite alternate;pointer-events:none}
+.gc{position:relative;z-index:1;width:100%;max-width:560px;background:linear-gradient(180deg,#fff8e7,#ffe9b8);border-radius:36px;box-shadow:0 0 0 5px #ffd700,0 0 0 10px #b8860b,0 20px 60px rgba(0,0,0,.8);padding:14px;max-height:96vh;overflow-y:auto}
+.top{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#2d1f0f,#4a3020);border-radius:30px;padding:8px 14px;border:3px solid #ffd700;margin-bottom:10px;color:#ffd700;font-weight:bold;font-size:.85rem}
+.dlg{display:flex;align-items:flex-end;gap:10px;margin-bottom:10px}
+.wukong{position:relative;width:68px;height:68px;flex-shrink:0;border-radius:50%;background:radial-gradient(circle at 35% 30%, #fff4d6 0%, #ffe0a3 45%, #e8b56a 100%);border:4px solid #d4a017;box-shadow:0 0 0 3px #fff3c4, 0 0 0 6px #b8860b, 0 6px 12px rgba(0,0,0,.4);display:flex;justify-content:center;align-items:center;overflow:visible}
+.wukong::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);width:46px;height:8px;border-radius:50%;background:linear-gradient(180deg,#ffe066,#ffb800);border:2px solid #b8860b;box-shadow:0 1px 2px rgba(0,0,0,.3);z-index:3}
+.wukong::after{content:"";position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:26px;height:14px;border-radius:0 0 14px 14px;background:linear-gradient(180deg,#4aa3ff,#1e6fd9);border:2px solid #0d4a9e;z-index:2}
+.wukong .face{font-size:2.3rem;line-height:1;position:relative;z-index:1;margin-top:6px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.wukong .halo{position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle, rgba(255,215,0,.35) 0%, transparent 70%);animation:halo 2.5s ease-in-out infinite;pointer-events:none;z-index:0}
+@keyframes halo{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+.wukong.happy{animation:jump .5s}
+.wukong.sad{animation:shake .4s}
+.wukong.listening{animation:listenPulse 1s ease-in-out infinite}
+@keyframes listenPulse{0%,100%{box-shadow:0 0 0 3px #fff3c4,0 0 0 6px #b8860b,0 6px 12px rgba(0,0,0,.4),0 0 0 0 rgba(255,82,82,.7)}50%{box-shadow:0 0 0 3px #fff3c4,0 0 0 6px #ff5252,0 6px 12px rgba(0,0,0,.4),0 0 0 16px rgba(255,82,82,0)}}
+@keyframes jump{50%{transform:translateY(-14px)}}
+@keyframes shake{25%{transform:rotate(-9deg)}75%{transform:rotate(9deg)}}
+.bub{background:#fff;border-radius:20px 20px 20px 6px;padding:10px 14px;border:3px solid #b8860b;box-shadow:0 4px 0 #b8860b;font-size:.9rem;color:#2d1f0f;flex:1;min-height:50px;display:flex;align-items:center;line-height:1.4}
+.panel{background:linear-gradient(180deg,#f5e6c8,#e8d4a8);border-radius:26px;padding:20px 12px;border:4px solid #b8860b;box-shadow:inset 0 0 0 3px #fff8e7,0 6px 0 #6b4e1b;margin-bottom:12px;position:relative;overflow:hidden}
+.q{text-align:center;font-size:2.8rem;font-weight:900;color:#2d1f0f;text-shadow:2px 2px 0 #ffd700;letter-spacing:2px;min-height:80px;display:flex;align-items:center;justify-content:center;position:relative}
+.q .num{animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.5);opacity:0}}
+.q.fly{animation:fly .4s ease}
+@keyframes fly{to{transform:translateY(-40px) scale(.5);opacity:0}}
+.combo{position:absolute;top:8px;right:10px;background:#ff5252;color:#fff;font-weight:900;font-size:.85rem;padding:4px 10px;border-radius:14px;box-shadow:0 3px 0 #8b2c2c;display:none}
+.combo.show{display:block;animation:comboPop .3s}
+@keyframes comboPop{from{transform:scale(0)}to{transform:scale(1)}}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.opt{background:linear-gradient(180deg,#fff9e6,#ffe9b8);border:3px solid #b8860b;border-radius:22px;padding:18px 0;font-size:1.8rem;font-weight:900;color:#2d1f0f;box-shadow:0 6px 0 #8b6b3c;cursor:pointer;text-align:center;font-family:inherit;transition:.1s}
+.opt:active{transform:translateY(4px);box-shadow:0 2px 0 #8b6b3c}
+.opt.ok{background:#6fbf73;border-color:#2d5a2d;color:#fff;animation:jump .4s}
+.opt.bad{background:#e57373;border-color:#8b2c2c;color:#fff;animation:shake .4s}
+.opt:disabled{cursor:not-allowed}
+.mic-wrap{display:flex;gap:8px;margin-top:10px}
+.mic-btn{flex:1;background:linear-gradient(180deg,#4aa3ff,#1e6fd9);border:3px solid #fff3d1;border-radius:22px;padding:12px 0;font-size:1rem;font-weight:900;color:#fff;box-shadow:0 5px 0 #0d4a9e;cursor:pointer;font-family:inherit;transition:.1s}
+.mic-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #0d4a9e}
+.mic-btn:disabled{opacity:.5;cursor:not-allowed}
+.mic-btn.listening{background:linear-gradient(180deg,#ff7a7a,#e53935);box-shadow:0 5px 0 #8b2c2c;animation:listenBtn 1s ease-in-out infinite}
+@keyframes listenBtn{50%{transform:scale(1.03)}}
+.heard{text-align:center;font-size:.8rem;color:#5a3e1b;margin-top:6px;min-height:18px;font-weight:bold}
+.heard.ok{color:#2d5a2d}
+.heard.bad{color:#8b2c2c}
+.msg{text-align:center;font-weight:bold;margin-top:10px;min-height:28px;font-size:.85rem;background:#fff3d1;border-radius:16px;padding:6px 10px;border:2px solid #b8860b}
+.msg.success{background:#d4edda;color:#2d5a2d;border-color:#4caf50}
+.msg.error{background:#f8d7da;color:#8b2c2c;border-color:#d32f2f}
+.msg.info{background:#d1ecf1;color:#0c5460;border-color:#17a2b8}
+.btn{background:linear-gradient(180deg,#ffd700,#ffb800);border:3px solid #fff3d1;border-radius:26px;padding:12px 20px;font-size:1.1rem;font-weight:900;color:#2d1f0f;box-shadow:0 7px 0 #b8860b;cursor:pointer;font-family:inherit;width:100%;transition:.1s;margin-top:10px}
+.btn:active{transform:translateY(5px);box-shadow:0 2px 0 #b8860b}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;justify-content:center;align-items:center;z-index:1000;backdrop-filter:blur(8px);padding:20px}
+.card{background:linear-gradient(180deg,#fff8e7,#ffe9b8);border-radius:32px;padding:28px 22px;text-align:center;border:6px solid #ffd700;box-shadow:0 20px 40px black;max-width:320px;width:100%}
+.card h2{font-size:1.6rem;color:#2d1f0f;margin:0 0 8px}
+.card p{font-size:.95rem;margin:8px 0;color:#4a3020;line-height:1.5}
+.card .big{font-size:2rem;font-weight:900;color:#b8860b}
+.card .btn{width:100%}
+.start{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;justify-content:center;align-items:center;z-index:2000;backdrop-filter:blur(6px);flex-direction:column;color:#ffd700;text-align:center;padding:20px}
+.start h1{font-size:1.9rem;margin-bottom:8px;text-shadow:3px 3px 0 #8b6b3c}
+.start p{color:#ffe9b8;margin-bottom:12px;font-size:.9rem;line-height:1.5}
+.start .hint{color:#ffb800;font-size:.8rem;margin-bottom:16px;max-width:280px}
+.start .btn{max-width:240px}
+
+/* 难度选择 */
+.diff-wrap{display:flex;gap:12px;margin-bottom:18px;width:100%;max-width:300px}
+.diff-btn{flex:1;background:linear-gradient(180deg,#fff9e6,#ffe9b8);border:3px solid #b8860b;border-radius:20px;padding:14px 8px;font-size:1rem;font-weight:900;color:#2d1f0f;box-shadow:0 5px 0 #8b6b3c;cursor:pointer;font-family:inherit;transition:.15s;line-height:1.4}
+.diff-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #8b6b3c}
+.diff-btn.sel{background:linear-gradient(180deg,#ffd700,#ffb800);border-color:#2d1f0f;box-shadow:0 0 0 4px #ffd700,0 5px 0 #8b6b3c;transform:scale(1.05)}
+.diff-btn .d-emoji{font-size:1.5rem;display:block;margin-bottom:4px}
+.diff-btn .d-sub{font-size:.7rem;color:#8b6b3c;font-weight:normal;display:block;margin-top:2px}
+.diff-btn.sel .d-sub{color:#5a3e1b}
+</style>
+</head>
+<body>
+
+<div class="start" id="startOverlay">
+  <h1>🐵 悟空速算小能手</h1>
+  <p>先选个难度吧！</p>
+
+  <div class="diff-wrap" id="diffWrap">
+    <button class="diff-btn sel" data-diff="easy">
+      <span class="d-emoji">🐣</span>10 以内
+      <span class="d-sub">不进位不退位</span>
+    </button>
+    <button class="diff-btn" data-diff="hard">
+      <span class="d-emoji">🐵</span>20 以内
+      <span class="d-sub">含进退位</span>
+    </button>
+  </div>
+
+  <p class="hint">💡 点“俺来也”后会请求麦克风权限<br>之后每题自动听你说话，也可点按钮作答</p>
+  <button class="btn" id="startBtn">俺来也 ➜</button>
+</div>
+
+<div class="gc">
+  <div class="top">
+    <span>⏱️ <b id="timeLeft">60</b>秒</span>
+    <span>🎯 得分 <b id="score">0</b></span>
+    <span id="diffTag" style="background:#4caf50;padding:2px 8px;border-radius:10px;font-size:.75rem;">10内</span>
+  </div>
+  <div class="dlg">
+    <div class="wukong" id="avatar"><div class="halo"></div><div class="face">🐵</div></div>
+    <div class="bub" id="dialogueBubble">准备好了吗？</div>
+  </div>
+  <div class="panel">
+    <div class="combo" id="comboBox">连击 x1</div>
+    <div class="q" id="question">…</div>
+    <div class="opts" id="opts"></div>
+    <div class="mic-wrap"><button class="mic-btn" id="micBtn" disabled>🎤 俺来说答案</button></div>
+    <div class="heard" id="heardText"></div>
+  </div>
+  <div class="msg" id="messageBox">点开始，挑战你的速算！</div>
+</div>
+
+<script>
+/* =========================================================
+   状态
+   ========================================================= */
+const TOTAL_TIME = 60;
+let timeLeft = TOTAL_TIME, score = 0, combo = 0;
+let running = false, timerId = null, currentAnswer = null, locked = false, qCount = 0;
+let difficulty = 'easy'; // 'easy' = 10以内, 'hard' = 20以内
+
+const $ = id => document.getElementById(id);
+const timeEl = $('timeLeft'), scoreEl = $('score');
+const qEl = $('question'), optsEl = $('opts');
+const msg = $('messageBox'), bubble = $('dialogueBubble');
+const avatar = $('avatar'), comboBox = $('comboBox');
+const micBtn = $('micBtn'), heardEl = $('heardText');
+const diffTag = $('diffTag');
+
+/* =========================================================
+   语音识别
+   ========================================================= */
+let recognition = null;
+let listening = false;
+let voiceSupported = false;
+let micAllowed = false;
+let autoListen = false;
+
+function setupVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    micBtn.textContent = '🎤 此浏览器不支持语音';
+    micBtn.disabled = true;
+    return;
+  }
+  voiceSupported = true;
+
+  recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    listening = true;
+    micAllowed = true;
+    micBtn.textContent = '🔴 俺在听…';
+    micBtn.classList.add('listening');
+    avatar.classList.add('listening');
+    setHeard('请说出答案…', '');
+  };
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    handleVoiceAnswer(text);
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      micAllowed = false;
+      autoListen = false;
+      setMsg('麦克风被拒绝了，用按钮选吧', 'error');
+    } else if (e.error === 'no-speech') {
+      setMsg('没听到声音，再说一次？', 'error');
+    } else if (e.error === 'network') {
+      setMsg('语音识别需要联网，或换按钮作答', 'error');
+    } else if (e.error === 'aborted') {
+      // 主动停止，不提示
+    } else {
+      setMsg('语音识别出错，用按钮选吧', 'error');
+    }
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    micBtn.textContent = '🎤 俺来说答案';
+    micBtn.classList.remove('listening');
+    avatar.classList.remove('listening');
+
+    if (autoListen && running && !locked && micAllowed) {
+      setTimeout(() => {
+        if (autoListen && running && !locked && micAllowed) {
+          startListening(true);
+        }
+      }, 300);
+    }
+  };
+}
+
+function startListening(silent) {
+  if (!voiceSupported || !recognition || !running || locked) return;
+  if (listening) return;
+  if (!silent) setHeard('', '');
+  try {
+    recognition.start();
+  } catch (e) {}
+}
+
+function setHeard(text, type) {
+  heardEl.textContent = text;
+  heardEl.className = 'heard' + (type ? ' ' + type : '');
+}
+
+function parseNumber(text) {
+  if (!text) return NaN;
+  const s = String(text).trim().replace(/[。，,.!！?？\s]/g, '');
+  const arabMatch = s.match(/\d+/);
+  if (arabMatch) return parseInt(arabMatch[0], 10);
+  const map = { 零:0, 一:1, 二:2, 两:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9, 十:10 };
+  if (s === '十') return 10;
+  if (s.includes('十')) {
+    const idx = s.indexOf('十');
+    const before = s.slice(0, idx);
+    const after = s.slice(idx + 1);
+    const tens = before ? (map[before] ?? NaN) : 1;
+    const ones = after ? (map[after] ?? NaN) : 0;
+    if (isNaN(tens) || isNaN(ones)) return NaN;
+    return tens * 10 + ones;
+  }
+  for (let i = s.length - 1; i >= 0; i--) {
+    if (map[s[i]] !== undefined) return map[s[i]];
+  }
+  return NaN;
+}
+
+function handleVoiceAnswer(rawText) {
+  const num = parseNumber(rawText);
+  if (isNaN(num)) {
+    setHeard(`听到：“${rawText}”，没听懂`, 'bad');
+    setMsg('没听清，再说一次或用按钮选', 'error');
+    return;
+  }
+  setHeard(`听到：“${rawText}” → ${num}`, 'ok');
+  const targetBtn = [...optsEl.children].find(b => Number(b.textContent) === num);
+  if (targetBtn) {
+    onAnswer(targetBtn, num, true);
+  } else {
+    if (!running || locked) return;
+    locked = true;
+    [...optsEl.children].forEach(b => b.disabled = true);
+    combo = 0;
+    comboBox.classList.remove('show');
+    mood('sad');
+    score = Math.max(0, score - 5);
+    scoreEl.textContent = score;
+    [...optsEl.children].forEach(b => {
+      if (Number(b.textContent) === currentAnswer) b.classList.add('ok');
+    });
+    setMsg(`❌ 你说的 ${num} 不在选项里，正确答案是 ${currentAnswer}`, 'error');
+    speak('不对哦！仔细算算！');
+    setTimeout(() => nextQuestion(), 1400);
+  }
+}
+
+/* =========================================================
+   悟空语音
+   ========================================================= */
+function speak(text) {
+  if (!text || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 1.1; u.pitch = 1.6;
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function mood(m) {
+  avatar.classList.remove('happy', 'sad');
+  if (m) avatar.classList.add(m);
+  setTimeout(() => avatar.classList.remove('happy', 'sad'), 600);
+}
+function setMsg(t, type) {
+  msg.textContent = t;
+  msg.className = 'msg' + (type ? ' ' + type : '');
+}
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+/* =========================================================
+   出题（核心：按难度分支出题逻辑）
+   ========================================================= */
+function makeQuestion() {
+  if (difficulty === 'easy') {
+    // 10 以内加减，结果不超过 10，减法结果 >= 0
+    const useAdd = Math.random() < 0.5;
+    let a, b, ans, text;
+    if (useAdd) {
+      // a + b <= 10
+      a = rand(1, 9);
+      b = rand(1, 10 - a);
+      ans = a + b;
+      text = `${a} + ${b}`;
+    } else {
+      // a - b >= 0, a <= 10
+      a = rand(2, 10);
+      b = rand(1, a);
+      ans = a - b;
+      text = `${a} − ${b}`;
+    }
+    return { text, ans };
+  } else {
+    // 20 以内加减，加法结果 10~20，减法结果 1~19，尽量含进退位
+    const useAdd = Math.random() < 0.5;
+    let a, b, ans, text;
+    if (useAdd) {
+      do { a = rand(2, 15); b = rand(2, 18); }
+      while (a + b > 20 || a + b <= 10);
+      ans = a + b; text = `${a} + ${b}`;
+    } else {
+      do { a = rand(11, 20); b = rand(2, 9); }
+      while (a - b < 1 || a % 10 >= b % 10);
+      ans = a - b; text = `${a} − ${b}`;
+    }
+    return { text, ans };
+  }
+}
+
+function makeOptions(ans) {
+  const set = new Set([ans]);
+  while (set.size < 4) {
+    let delta = rand(-3, 3);
+    if (delta === 0) delta = 1;
+    let v = ans + delta;
+    if (v < 0) v = ans + 1;
+    if (v !== ans) set.add(v);
+  }
+  const arr = [...set];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* =========================================================
+   渲染 & 自动续听
+   ========================================================= */
+function nextQuestion() {
+  if (!running) return;
+
+  autoListen = false;
+  if (recognition && listening) {
+    try { recognition.stop(); } catch (e) {}
+  }
+
+  locked = false;
+  qCount++;
+  const q = makeQuestion();
+  currentAnswer = q.ans;
+  qEl.innerHTML = `<span class="num">${q.text} = ?</span>`;
+  qEl.classList.remove('fly');
+  setHeard('', '');
+
+  optsEl.innerHTML = '';
+  makeOptions(q.ans).forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = v;
+    btn.addEventListener('click', () => onAnswer(btn, v, false));
+    optsEl.appendChild(btn);
+  });
+
+  bubble.textContent = `悟空：第 ${qCount} 题，算算看！`;
+  if (voiceSupported) micBtn.disabled = false;
+
+  autoListen = true;
+  if (micAllowed) {
+    setTimeout(() => {
+      if (autoListen && running && !locked) startListening(true);
+    }, 400);
+  }
+}
+
+/* =========================================================
+   答题
+   ========================================================= */
+function onAnswer(btn, v, fromVoice) {
+  if (!running || locked) return;
+  locked = true;
+  autoListen = false;
+
+  if (recognition && listening) {
+    try { recognition.stop(); } catch (e) {}
+  }
+  micBtn.disabled = true;
+
+  const allBtns = [...optsEl.children];
+  allBtns.forEach(b => b.disabled = true);
+
+  const correct = v === currentAnswer;
+
+  if (correct) {
+    combo++;
+    const mult = Math.min(combo, 5);
+    const add = 10 * mult;
+    score += add;
+    scoreEl.textContent = score;
+    btn.classList.add('ok');
+    mood('happy');
+    qEl.classList.add('fly');
+    if (combo >= 2) {
+      comboBox.textContent = `连击 x${mult}`;
+      comboBox.classList.add('show');
+    }
+    const praises = ['好！', '漂亮！', '真快！', '火眼金睛！', '厉害！'];
+    const prefix = fromVoice ? '🎤 ' : '';
+    setMsg(`${prefix}✅ 答对 +${add}分！${combo > 1 ? `连击 x${mult}` : ''}`, 'success');
+    speak(praises[Math.min(combo - 1, praises.length - 1)]);
+    setTimeout(() => nextQuestion(), 700);
+  } else {
+    combo = 0;
+    comboBox.classList.remove('show');
+    btn.classList.add('bad');
+    allBtns.forEach(b => {
+      if (Number(b.textContent) === currentAnswer) b.classList.add('ok');
+    });
+    mood('sad');
+    score = Math.max(0, score - 5);
+    scoreEl.textContent = score;
+    const prefix = fromVoice ? '🎤 ' : '';
+    setMsg(`${prefix}❌ 答错了，正确答案是 ${currentAnswer}（扣5分）`, 'error');
+    speak('答错了！仔细算算！');
+    setTimeout(() => nextQuestion(), 1400);
+  }
+}
+
+/* =========================================================
+   开始 / 结束
+   ========================================================= */
+function startTimer() {
+  timeLeft = TOTAL_TIME;
+  timeEl.textContent = timeLeft;
+  timeEl.style.color = '';
+  timerId = setInterval(() => {
+    timeLeft--;
+    timeEl.textContent = timeLeft;
+    if (timeLeft <= 10) timeEl.style.color = '#ff5252';
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function startGame() {
+  running = true; score = 0; combo = 0; qCount = 0; locked = false;
+  scoreEl.textContent = '0';
+  comboBox.classList.remove('show');
+
+  // 更新难度标签
+  if (difficulty === 'easy') {
+    diffTag.textContent = '10内';
+    diffTag.style.background = '#4caf50';
+  } else {
+    diffTag.textContent = '20内';
+    diffTag.style.background = '#ff9800';
+  }
+
+  setMsg(difficulty === 'easy' ? '10以内加减，加油！' : '20以内加减，挑战开始！');
+  speak(difficulty === 'easy' ? '俺老孙来也！十以内，开始！' : '俺老孙来也！二十以内，挑战！');
+  startTimer();
+  nextQuestion();
+}
+
+function endGame() {
+  running = false;
+  autoListen = false;
+  clearInterval(timerId);
+  locked = true;
+  optsEl.innerHTML = '';
+  micBtn.disabled = true;
+  if (recognition && listening) {
+    try { recognition.stop(); } catch (e) {}
+  }
+
+  // 最高分按难度分开存
+  const key = 'wukong_math_best_' + difficulty;
+  const best = Number(localStorage.getItem(key) || 0);
+  const isNewBest = score > best;
+  if (isNewBest) localStorage.setItem(key, String(score));
+
+  let comment;
+  if (score >= 300) comment = '哈哈哈！你已是速算大圣啦！';
+  else if (score >= 150) comment = '好厉害！再练练能成小圣！';
+  else if (score >= 50) comment = '不错不错！继续加油！';
+  else comment = '别急，慢慢算，俺老孙等你！';
+
+  speak(comment);
+  showResult(score, best, isNewBest, comment);
+}
+
+function showResult(score, best, isNewBest, comment) {
+  const diffName = difficulty === 'easy' ? '10以内' : '20以内';
+  const ov = document.createElement('div');
+  ov.className = 'ov';
+  ov.innerHTML = `<div class="card">
+    <div style="font-size:3.5rem;">${score >= 150 ? '🏆' : '🐵'}</div>
+    <h2>时间到！</h2>
+    <p style="font-size:.85rem;color:#8b6b3c;">难度：${diffName}</p>
+    <p>本次得分</p>
+    <div class="big">${score}</div>
+    <p>${comment}</p>
+    ${isNewBest ? '<p style="color:#ff5252;font-weight:bold;">🎉 新纪录！</p>' : `<p style="font-size:.85rem;color:#8b6b3c;">最高纪录：${best}</p>`}
+    <button class="btn" id="againBtn">再来一次 ➜</button>
+    <button class="btn" id="changeDiffBtn" style="background:linear-gradient(180deg,#b0b0b0,#888);box-shadow:0 7px 0 #5a5a5a;margin-top:8px;">换个难度</button>
+  </div>`;
+  document.body.appendChild(ov);
+  $('againBtn').addEventListener('click', () => { ov.remove(); startGame(); });
+  $('changeDiffBtn').addEventListener('click', () => {
+    ov.remove();
+    // 回到开始页重新选难度
+    $('startOverlay').style.display = 'flex';
+  });
+}
+
+/* =========================================================
+   初始化
+   ========================================================= */
+(function init() {
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.opacity = (Math.random() * 0.7 + 0.3).toFixed(2);
+    s.style.animationDelay = (Math.random() * 2).toFixed(2) + 's';
+    document.body.appendChild(s);
+  }
+
+  setupVoice();
+  micBtn.addEventListener('click', () => startListening(false));
+
+  // 难度选择
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      difficulty = btn.dataset.diff;
+    });
+  });
+
+  // 开始按钮
+  $('startBtn').addEventListener('click', () => {
+    $('startOverlay').style.display = 'none';
+
+    if (voiceSupported) {
+      autoListen = true;
+      try { recognition.start(); } catch (e) {}
+    }
+
+    startGame();
+  });
+})();
+</script>
+</body>
+</html>

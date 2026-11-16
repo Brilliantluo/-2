@@ -147,8 +147,35 @@
   <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
   <div class="main" id="main"></div>
 </div>
-
 <script>
+/* ================= 语音朗读模块 ================= */
+let voiceUnlocked = false;
+function unlockVoice() {
+  if (voiceUnlocked || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0.01; u.lang = 'zh-CN';
+    window.speechSynthesis.speak(u);
+    voiceUnlocked = true;
+  } catch (e) {}
+}
+function speak(text, onDone) {
+  if (!text || !('speechSynthesis' in window)) { if (onDone) onDone(); return; }
+  try {
+    window.speechSynthesis.cancel();
+    const voices = window.speechSynthesis.getVoices();
+    const zhVoice = voices.find(v => v.lang && v.lang.toLowerCase().includes('zh'));
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 1.0; u.pitch = 1.5;
+    if (zhVoice) u.voice = zhVoice;
+    let done = false;
+    const finish = () => { if (!done) { done = true; if (onDone) onDone(); } };
+    u.onend = finish; u.onerror = finish;
+    setTimeout(finish, Math.max(1500, text.length * 250));
+    window.speechSynthesis.speak(u);
+  } catch (e) { if (onDone) onDone(); }
+}
+
 /* ============================================================
    阶段数据（方案一精简表）
    ============================================================ */
@@ -979,432 +1006,265 @@ const STAGES = {
 ]}
 };
 
-/* ============================================================
-   工具
-   ============================================================ */
-const ALL_STROKES = ['横','竖','撇','捺','点','提','横折','竖钩','弯钩','横折钩',
-  '竖折','撇折','横撇','竖弯钩','斜钩','卧钩','横钩','竖提','横折弯钩','撇点','竖弯','竖折折钩','横折提'];
+/* ================= 游戏状态 ================= */
+let currentStageKey = null;
+let questions = [];
+let qIndex = 0;
+let score = 0;
+let correctCount = 0;
+let totalTime = 300;
+let timeLeft = 300;
+let timerId = null;
+let isAnswered = false;
+
+const mainEl = document.getElementById('main');
+const subTitle = document.getElementById('subTitle');
+const scoreNum = document.getElementById('scoreNum');
+const timerNum = document.getElementById('timerNum');
+const timerBox = document.getElementById('timerBox');
+const progressBar = document.getElementById('progressBar');
 
 function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return a;
+  return arr;
 }
 
-/* 从 strokeOrder 解析出笔画数组 */
-function parseStrokes(strokeOrder) {
-  return strokeOrder.split('、').map(s => s.trim()).filter(Boolean);
-}
+/* ================= 页面渲染 ================= */
+function renderStartScreen() {
+  clearInterval(timerId);
+  subTitle.textContent = '选择学期开始';
+  timerNum.textContent = '5:00';
+  timerBox.classList.remove('urgent');
+  scoreNum.textContent = '0';
+  progressBar.style.width = '0%';
 
-/* 构建题库：读音/拼音/总笔画选项自动补全；笔画题在每局中随机出题 */
-function buildQuestions(coreWords) {
-  const allPinyin = coreWords.map(w => w.pinyin);
-  const allChars = coreWords.map(w => w.hanzi);
-  return coreWords.map(w => {
-    const otherChars = allChars.filter(c => c !== w.hanzi);
-    const otherPinyin = allPinyin.filter(p => p !== w.pinyin);
-
-    const readingOpts = shuffle([w.hanzi, ...shuffle(otherChars).slice(0, 2)]);
-    const pinyinOpts = shuffle([w.pinyin, ...shuffle(otherPinyin).slice(0, 2)]);
-
-    const totalSet = new Set([w.totalStrokes]);
-    [w.totalStrokes-1, w.totalStrokes+1, w.totalStrokes-2, w.totalStrokes+2].forEach(c => {
-      if (c > 0 && c <= 15 && totalSet.size < 3) totalSet.add(c);
-    });
-    const totalOpts = shuffle(Array.from(totalSet));
-
-    return {
-      hanzi: w.hanzi, pinyin: w.pinyin, totalStrokes: w.totalStrokes,
-      strokeOrder: w.strokeOrder,
-      strokes: parseStrokes(w.strokeOrder),  // 完整笔画列表
-      readingOptions: readingOpts, readingAnswer: readingOpts.indexOf(w.hanzi),
-      pinyinOptions: pinyinOpts, pinyinAnswer: pinyinOpts.indexOf(w.pinyin),
-      totalOptions: totalOpts, totalAnswer: totalOpts.indexOf(w.totalStrokes)
-    };
-  });
-}
-
-/* ============================================================
-   状态
-   ============================================================ */
-const STAGE_NAMES = ['第一关 · 听音辨字', '第二关 · 选对拼音', '第三关 · 笔画闯关'];
-const STAGE_CSS = ['stage-1', 'stage-2', 'stage-3'];
-const GAME_SECONDS = 5 * 60;
-
-let state = {
-  stageKey: null,
-  questions: [],
-  order: [],
-  current: 0,
-  step: 0,
-  score: 0,
-  locked: false,
-  timeLeft: GAME_SECONDS,
-  timerId: null,
-  finished: false,
-  timeUp: false,
-  // 当前笔画题的临时数据
-  strokeAskIndex: 0,
-  strokeAskName: '',
-  strokeOptions: [],
-  strokeAnswer: 0
-};
-
-const $main = document.getElementById('main');
-const $scoreNum = document.getElementById('scoreNum');
-const $progressBar = document.getElementById('progressBar');
-const $subTitle = document.getElementById('subTitle');
-const $timerBox = document.getElementById('timerBox');
-const $timerNum = document.getElementById('timerNum');
-
-/* ============================================================
-   首页
-   ============================================================ */
-function renderStart() {
-  stopTimer();
-  state.stageKey = null;
-  state.finished = false;
-  $subTitle.textContent = '选择学期开始';
-  $timerNum.textContent = '5:00';
-  $timerBox.classList.remove('urgent');
-  updateScore(0);
-  updateProgress(0);
-
-  const keys = ['s1','s2','s3','s4'];
-  const buttons = keys.map(k => {
-    const s = STAGES[k];
-    const n = s.core.length;
-    const disabled = n === 0 ? 'disabled' : '';
-    return `
-      <button class="stage-btn ${s.color}" data-key="${k}" ${disabled}>
+  let html = `
+    <div class="start-screen">
+      <div class="mascot">🐵</div>
+      <h2>生字大闯关</h2>
+      <p>选择一个学期，开始识字挑战！<br>听清悟空读题，选出正确的答案。</p>
+      <div class="stage-grid">
+  `;
+  for (const key in STAGES) {
+    const s = STAGES[key];
+    html += `
+      <button class="stage-btn ${s.color}" onclick="startGame('${key}')">
         <span class="icon">${s.icon}</span>
         <span class="name">${s.name}</span>
-        <span class="count">${n} 个生字</span>
-      </button>`;
-  }).join('');
-
-  $main.innerHTML = `
-    <div class="start-screen">
-      <div class="mascot">🐼</div>
-      <h2>生字识字大闯关</h2>
-      <p>每局 5 分钟，每个字 4 小问<br>听音辨字 → 选对拼音 → 总笔画 → 指定笔画</p>
-      <div class="stage-grid">${buttons}</div>
-      <div class="hint">选择学期后开始计时，时间到自动结算</div>
-    </div>`;
-
-  document.querySelectorAll('.stage-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.disabled) return;
-      startGame(btn.dataset.key);
-    });
-  });
+        <span class="count">${s.core.length} 个生字</span>
+      </button>
+    `;
+  }
+  html += `</div><div class="hint">点击按钮后，请允许浏览器播放声音哦~</div></div>`;
+  mainEl.innerHTML = html;
+  unlockVoice(); 
 }
 
-/* ============================================================
-   开始
-   ============================================================ */
 function startGame(stageKey) {
-  const s = STAGES[stageKey];
-  state.stageKey = stageKey;
-  state.questions = buildQuestions(s.core);
-  state.order = shuffle(state.questions.map((_, i) => i));
-  state.current = 0; state.step = 0; state.score = 0;
-  state.locked = false; state.finished = false; state.timeUp = false;
-  state.timeLeft = GAME_SECONDS;
+  currentStageKey = stageKey;
+  const stageData = STAGES[stageKey];
+  subTitle.textContent = stageData.name;
+  
+  // 生成题目 (打乱生字，每种类型出几道)
+  const chars = shuffle([...stageData.core]);
+  questions = chars.map((c, i) => {
+    const type = i % 3; 
+    let title = '', display = '', options = [], answer = '';
+    
+    if (type === 0) {
+      title = '请选出正确的拼音：';
+      display = `<div class="hanzi-display">${c.hanzi}</div>`;
+      const allPinyins = [...new Set(stageData.core.map(x => x.pinyin))];
+      let distractors = shuffle(allPinyins.filter(p => p !== c.pinyin)).slice(0, 2);
+      options = shuffle([c.pinyin, ...distractors]);
+      answer = c.pinyin;
+    } else if (type === 1) {
+      title = '请选出对应的生字：';
+      display = `<div class="pinyin-display">${c.pinyin}</div>`;
+      const allHanzis = [...new Set(stageData.core.map(x => x.hanzi))];
+      let distractors = shuffle(allHanzis.filter(h => h !== c.hanzi)).slice(0, 2);
+      options = shuffle([c.hanzi, ...distractors]);
+      answer = c.hanzi;
+    } else {
+      title = '这个字一共有几笔？';
+      display = `<div class="hanzi-display">${c.hanzi}</div>`;
+      const correct = c.totalStrokes;
+      const set = new Set([correct]);
+      while(set.size < 3) {
+        let d = correct + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random()*2)+1);
+        if (d > 0) set.add(d);
+      }
+      options = shuffle([...set]).map(String);
+      answer = String(correct);
+    }
+    
+    return { type, hanzi: c.hanzi, pinyin: c.pinyin, strokeOrder: c.strokeOrder, title, display, options, answer };
+  });
 
-  $subTitle.textContent = s.name + ' · 5分钟挑战';
-  updateScore(0);
-  updateProgress(0);
-  updateTimerDisplay();
-  $timerBox.classList.remove('urgent');
+  score = 0; correctCount = 0; qIndex = 0; timeLeft = totalTime;
+  scoreNum.textContent = '0';
+  renderQuestion();
   startTimer();
-  renderStep();
 }
 
-/* ============================================================
-   计时器
-   ============================================================ */
 function startTimer() {
-  stopTimer();
-  state.timerId = setInterval(() => {
-    state.timeLeft--;
+  clearInterval(timerId);
+  timerBox.classList.remove('urgent');
+  updateTimerDisplay();
+  timerId = setInterval(() => {
+    timeLeft--;
     updateTimerDisplay();
-    if (state.timeLeft <= 30) $timerBox.classList.add('urgent');
-    if (state.timeLeft <= 0) {
-      stopTimer();
-      state.timeUp = true;
-      renderResult();
-    }
+    if (timeLeft <= 30) timerBox.classList.add('urgent');
+    if (timeLeft <= 0) endGame(true);
   }, 1000);
 }
-function stopTimer() {
-  if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
-}
+
 function updateTimerDisplay() {
-  const m = Math.floor(Math.max(0, state.timeLeft) / 60);
-  const s = Math.max(0, state.timeLeft) % 60;
-  $timerNum.textContent = `${m}:${String(s).padStart(2, '0')}`;
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  timerNum.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-/* ============================================================
-   答题
-   ============================================================ */
-function currentQuestion() { return state.questions[state.order[state.current]]; }
-
-function qCounterHTML() {
-  return `<span class="qcount">第 ${state.current + 1} / ${state.questions.length} 个字</span>`;
-}
-
-function renderStep() {
-  if (state.finished) return;
-  state.locked = false;
-  const q = currentQuestion();
-  const totalSteps = state.questions.length * 4;
-  const doneSteps = state.current * 4 + state.step;
-  updateProgress(doneSteps / totalSteps * 100);
-  if (state.step === 0) renderReading(q);
-  else if (state.step === 1) renderPinyin(q);
-  else if (state.step === 2) renderTotal(q);
-  else renderStroke(q);
-}
-
-function renderReading(q) {
-  $main.innerHTML = `
-    <div class="stage-label ${STAGE_CSS[0]}">${STAGE_NAMES[0]}</div>${qCounterHTML()}
-    <div class="question-title">请选出下面读音对应的汉字：</div>
-    <div class="pinyin-display">${q.pinyin}</div>
-    <div class="options grid-3" id="options"></div>
-    <div class="feedback" id="feedback"></div>
-    <div class="stroke-hint" id="strokeHint"></div>
-    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一关 →</button></div>
-    ${renderDots()}`;
-  const $opts = document.getElementById('options');
-  q.readingOptions.forEach((text, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'btn opt-btn'; btn.textContent = text;
-    btn.addEventListener('click', () => handleChoice(btn, i === q.readingAnswer, q, 'reading'));
-    $opts.appendChild(btn);
+function renderQuestion() {
+  if (qIndex >= questions.length) { endGame(false); return; }
+  isAnswered = false;
+  const q = questions[qIndex];
+  progressBar.style.width = `${(qIndex / questions.length) * 100}%`;
+  
+  let html = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+      <span class="stage-label stage-${(qIndex%3)+1}">第 ${qIndex+1} 题</span>
+      <span class="qcount">${qIndex+1} / ${questions.length}</span>
+    </div>
+    <div class="question-title">${q.title}</div>
+    ${q.display}
+    <div class="options grid-3" id="optionsContainer">
+  `;
+  
+  q.options.forEach(opt => {
+    const isSmall = opt.length > 1;
+    html += `<button class="opt-btn ${isSmall ? 'small' : ''}" onclick="checkAnswer(this, '${opt}')">${opt}</button>`;
   });
+  
+  html += `
+    </div>
+    <div class="feedback" id="feedbackBox"><span class="icon"></span><span class="text"></span></div>
+    <div class="stroke-hint" id="strokeHint">笔顺：<b>${q.strokeOrder}</b></div>
+    <div class="next-wrap">
+      <button class="btn btn-speak" id="btnSpeak" onclick="speakQuestion()">🔊 再听一次</button>
+      <button class="btn btn-next" id="btnNext" onclick="nextQuestion()">下一题 ➜</button>
+    </div>
+    <div class="dots" id="dotsContainer"></div>
+  `;
+  
+  mainEl.innerHTML = html;
+  
+  const dots = document.getElementById('dotsContainer');
+  for(let i=0; i<questions.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < qIndex ? ' done' : (i === qIndex ? ' active' : ''));
+    dots.appendChild(d);
+  }
+  
+  // 题目出现后，延迟一点点自动朗读
+  setTimeout(() => {
+    document.getElementById('btnSpeak').classList.add('show');
+    speakQuestion();
+  }, 400);
 }
 
-function renderPinyin(q) {
-  $main.innerHTML = `
-    <div class="stage-label ${STAGE_CSS[1]}">${STAGE_NAMES[1]}</div>${qCounterHTML()}
-    <div class="question-title">请选出下面汉字的正确读音：</div>
-    <div class="hanzi-display">${q.hanzi}</div>
-    <div class="options grid-3" id="options"></div>
-    <div class="feedback" id="feedback"></div>
-    <div class="stroke-hint" id="strokeHint"></div>
-    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一关 →</button></div>
-    ${renderDots()}`;
-  const $opts = document.getElementById('options');
-  q.pinyinOptions.forEach((text, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'btn opt-btn small'; btn.textContent = text;
-    btn.addEventListener('click', () => handleChoice(btn, i === q.pinyinAnswer, q, 'pinyin'));
-    $opts.appendChild(btn);
-  });
+function speakQuestion() {
+  if(qIndex >= questions.length) return;
+  const q = questions[qIndex];
+  let textToSpeak = q.title;
+  
+  if (q.type === 0) {
+    textToSpeak += `这个字，${q.hanzi}。`;
+  } else if (q.type === 1) {
+    textToSpeak += `这个拼音，${q.pinyin}。`;
+  } else if (q.type === 2) {
+    textToSpeak += `这个字。`;
+  }
+  
+  speak(textToSpeak);
 }
 
-function renderTotal(q) {
-  $main.innerHTML = `
-    <div class="stage-label ${STAGE_CSS[2]}">${STAGE_NAMES[2]}</div>${qCounterHTML()}
-    <div class="question-title">汉字 <span class="big">${q.hanzi}</span> 一共有几笔？</div>
-    <div class="options grid-3" id="options"></div>
-    <div class="feedback" id="feedback"></div>
-    <div class="stroke-hint" id="strokeHint"></div>
-    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一关 →</button></div>
-    ${renderDots()}`;
-  const $opts = document.getElementById('options');
-  q.totalOptions.forEach((num, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'btn opt-btn small'; btn.textContent = num + ' 笔';
-    btn.addEventListener('click', () => handleChoice(btn, i === q.totalAnswer, q, 'total'));
-    $opts.appendChild(btn);
-  });
-}
-
-/* ---- 第4小问：随机问某一笔 ---- */
-function renderStroke(q) {
-  const strokes = q.strokes;
-  const idx = Math.floor(Math.random() * strokes.length); // 0-based
-  const askName = strokes[idx];
-
-  state.strokeAskIndex = idx;
-  state.strokeAskName = askName;
-
-  // 干扰项：从常用笔画池里抽2个不同于正确答案的
-  const pool = ALL_STROKES.filter(s => s !== askName);
-  const distractors = shuffle(pool).slice(0, 2);
-  const opts = shuffle([askName, ...distractors]);
-  state.strokeOptions = opts;
-  state.strokeAnswer = opts.indexOf(askName);
-
-  $main.innerHTML = `
-    <div class="stage-label ${STAGE_CSS[2]}">${STAGE_NAMES[2]}</div>${qCounterHTML()}
-    <div class="question-title">汉字 <span class="big">${q.hanzi}</span> 的第 <b>${idx + 1}</b> 笔是什么笔画？</div>
-    <div class="options grid-3" id="options"></div>
-    <div class="feedback" id="feedback"></div>
-    <div class="stroke-hint" id="strokeHint"></div>
-    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一题 →</button></div>
-    ${renderDots()}`;
-
-  const $opts = document.getElementById('options');
-  opts.forEach((text, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'btn opt-btn small'; btn.textContent = text;
-    btn.addEventListener('click', () => handleChoice(btn, i === state.strokeAnswer, q, 'stroke'));
-    $opts.appendChild(btn);
-  });
-}
-
-function handleChoice(btn, isRight, q, type) {
-  if (state.locked || state.finished) return;
-  state.locked = true;
-  const $feedback = document.getElementById('feedback');
-  const $hint = document.getElementById('strokeHint');
-  const $next = document.getElementById('btnNext');
-  document.querySelectorAll('#options .opt-btn').forEach(b => b.classList.add('disabled'));
-
-  let correctText = '';
-  let answerIdx = 0;
-
-  if (type === 'reading') { correctText = q.hanzi; answerIdx = q.readingAnswer; }
-  else if (type === 'pinyin') { correctText = q.pinyin; answerIdx = q.pinyinAnswer; }
-  else if (type === 'total') { correctText = q.totalStrokes + ' 笔'; answerIdx = q.totalAnswer; }
-  else { correctText = state.strokeAskName; answerIdx = state.strokeAnswer; }
-
-  if (isRight) {
+function checkAnswer(btn, selected) {
+  if (isAnswered) return;
+  isAnswered = true;
+  
+  const q = questions[qIndex];
+  const allBtns = document.querySelectorAll('.opt-btn');
+  allBtns.forEach(b => b.classList.add('disabled'));
+  
+  const fbBox = document.getElementById('feedbackBox');
+  const fbIcon = fbBox.querySelector('.icon');
+  const fbText = fbBox.querySelector('.text');
+  
+  if (selected === q.answer) {
     btn.classList.add('correct');
-    state.score++;
-    updateScore(state.score);
-    $feedback.className = 'feedback ok show';
-    $feedback.innerHTML = '<span class="icon">✅</span> 答对啦！真棒！';
+    score += 10; correctCount++;
+    scoreNum.textContent = score;
+    fbBox.className = 'feedback ok show';
+    fbIcon.textContent = '✅';
+    fbText.textContent = '答对啦，真棒！';
+    speak('答对啦，真棒！');
   } else {
     btn.classList.add('wrong');
-    const allBtns = document.querySelectorAll('#options .opt-btn');
-    if (allBtns[answerIdx]) allBtns[answerIdx].classList.add('correct');
-    $feedback.className = 'feedback no show';
-    $feedback.innerHTML = `<span class="icon">❌</span> 正确答案是「${correctText}」`;
+    allBtns.forEach(b => {
+      if (b.textContent === q.answer) b.classList.add('correct');
+    });
+    fbBox.className = 'feedback no show';
+    fbIcon.textContent = '❌';
+    fbText.textContent = `答错了，正确答案是 ${q.answer}`;
+    speak(`答错了，正确答案是，${q.answer}`);
   }
-
-  if (type === 'total' || type === 'stroke' || !isRight) {
-    $hint.classList.add('show');
-    let hintHTML = `<b>笔顺：</b>${q.strokeOrder}<br><b>总笔画：</b>${q.totalStrokes} 笔`;
-    if (type === 'stroke') {
-      hintHTML += `<br><b>第${state.strokeAskIndex + 1}笔：</b>${state.strokeAskName}`;
-    }
-    $hint.innerHTML = hintHTML;
-  }
-
-  $next.classList.add('show');
-  if (type === 'stroke') { $next.textContent = '下一个字 →'; $next.onclick = goNextChar; }
-  else { $next.textContent = '下一关 →'; $next.onclick = goNextStep; }
+  
+  document.getElementById('strokeHint').classList.add('show');
+  document.getElementById('btnNext').classList.add('show');
 }
 
-function goNextStep() {
-  if (state.finished) return;
-  state.step++;
-  if (state.step > 3) { goNextChar(); return; }
-  renderStep();
+function nextQuestion() {
+  qIndex++;
+  renderQuestion();
 }
 
-function goNextChar() {
-  if (state.finished) return;
-  state.current++;
-  state.step = 0;
-  if (state.current >= state.questions.length) {
-    stopTimer();
-    renderResult();
-  } else {
-    renderStep();
-  }
-}
+function endGame(isTimeout) {
+  clearInterval(timerId);
+  progressBar.style.width = '100%';
+  
+  const total = questions.length;
+  const rate = correctCount / total;
+  let stars = '⭐';
+  if (rate >= 0.9) stars = '⭐⭐⭐';
+  else if (rate >= 0.6) stars = '⭐⭐';
+  
+  let comment = isTimeout ? '时间到啦，下次再快一点哦！' : '闯关结束，你太棒了！';
+  speak(isTimeout ? '时间到啦！' : '闯关结束，你太棒了！');
 
-function renderDots() {
-  let html = '<div class="dots">';
-  const total = state.questions.length;
-  for (let i = 0; i < total; i++) {
-    let cls = 'dot';
-    if (i < state.current) cls += ' done';
-    if (i === state.current) cls += ' active';
-    html += `<span class="${cls}"></span>`;
-  }
-  return html + '</div>';
-}
-
-function updateScore(n) { $scoreNum.textContent = n; }
-function updateProgress(pct) { $progressBar.style.width = Math.min(100, Math.max(0, pct)) + '%'; }
-
-/* ============================================================
-   结算
-   ============================================================ */
-function renderResult() {
-  if (state.finished) return;
-  state.finished = true;
-  stopTimer();
-  updateProgress(100);
-
-  const score = state.score;
-  const answeredChars = Math.min(state.current + (state.step > 0 ? 1 : 0), state.questions.length);
-  const maxPossible = answeredChars * 4;
-  const pct = maxPossible > 0 ? score / maxPossible : 0;
-
-  let stars, comment, emoji;
-  if (score === 0) { stars='⭐'; emoji='🌱'; comment='没关系，多读多写，下次一定会更好！'; }
-  else if (pct >= 0.9) { stars='⭐⭐⭐⭐⭐'; emoji='🏆'; comment='太厉害了！生字识字小达人就是你！'; }
-  else if (pct >= 0.75) { stars='⭐⭐⭐⭐'; emoji='🎉'; comment='真棒！继续加油，你离满分只差一点点！'; }
-  else if (pct >= 0.5) { stars='⭐⭐⭐'; emoji='💪'; comment='不错哦！把答错的生字再复习一遍吧。'; }
-  else { stars='⭐⭐'; emoji='🌱'; comment='没关系，多读多写，下次一定会更好！'; }
-
-  const timeUpHTML = state.timeUp
-    ? `<div class="timeup">⏰ 时间到！5 分钟挑战结束</div>`
-    : `<div class="timeup">🎯 本阶段题目已全部完成</div>`;
-
-  $main.innerHTML = `
+  mainEl.innerHTML = `
     <div class="result-screen">
-      <div class="trophy">${emoji}</div>
-      <h2>闯关完成！</h2>
-      ${timeUpHTML}
+      <div class="trophy">${isTimeout ? '⏰' : '🏆'}</div>
+      <h2>${isTimeout ? '时间到！' : '闯关成功！'}</h2>
+      ${isTimeout ? '<div class="timeup">挑战已结束</div>' : ''}
       <div class="final-score">${score} <span>分</span></div>
       <div class="stars">${stars}</div>
-      <div class="comment">${comment}</div>
+      <div class="comment">${comment}<br>答对 ${correctCount} 题 / 共 ${total} 题</div>
       <div>
-        <button class="btn btn-restart" id="btnRestart">再玩一次 🔄</button>
-        <button class="btn btn-home" id="btnHome">返回首页 🏠</button>
+        <button class="btn btn-restart" onclick="startGame('${currentStageKey}')">再玩一次</button>
+        <button class="btn btn-home" onclick="renderStartScreen()">选择学期</button>
       </div>
-    </div>`;
-
-  document.getElementById('btnRestart').addEventListener('click', () => {
-    if (state.stageKey) startGame(state.stageKey);
-    else renderStart();
-  });
-  document.getElementById('btnHome').addEventListener('click', renderStart);
-
-  if (pct >= 0.75 && score > 0) fireConfetti();
+    </div>
+  `;
 }
 
-function fireConfetti() {
-  const emojis = ['🎉','⭐','🌟','✨','🎊','💛','🧡'];
-  for (let i = 0; i < 26; i++) {
-    const el = document.createElement('div');
-    el.className = 'confetti';
-    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-    el.style.left = Math.random() * 100 + 'vw';
-    el.style.animationDuration = (2 + Math.random() * 2) + 's';
-    el.style.animationDelay = (Math.random() * 0.8) + 's';
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 5000);
-  }
-}
-
-/* ============================================================
-   启动
-   ============================================================ */
-renderStart();
+// 初始化
+window.onload = () => {
+  renderStartScreen();
+};
 </script>
 </body>
 </html>

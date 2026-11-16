@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生字识字大闯关</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(160deg,#fdf6e3 0%,#e8f5e9 50%,#e3f2fd 100%);
+    min-height:100vh; display:flex; justify-content:center; align-items:flex-start;
+    padding:16px; color:#2c3e50;
+  }
+  .app { width:100%; max-width:520px; background:#fff; border-radius:24px;
+    box-shadow:0 12px 40px rgba(0,0,0,0.12); overflow:hidden; }
+  .topbar { background:linear-gradient(135deg,#ff8a65,#ff7043); color:#fff;
+    padding:18px 20px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .topbar h1 { font-size:18px; font-weight:700; }
+  .topbar .sub { font-size:11px; opacity:0.85; margin-top:2px; }
+  .score-box { background:rgba(255,255,255,0.25); border-radius:14px;
+    padding:6px 14px; text-align:center; min-width:64px; }
+  .score-box .num { font-size:22px; font-weight:800; }
+  .score-box .lbl { font-size:10px; opacity:0.9; }
+  .timer-box { background:rgba(255,255,255,0.25); border-radius:14px;
+    padding:6px 14px; text-align:center; min-width:64px; margin-left:8px; }
+  .timer-box .num { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .timer-box .lbl { font-size:10px; opacity:0.9; }
+  .timer-box.urgent .num { color:#ffeb3b; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .topbar-right { display:flex; }
+  .progress-wrap { height:6px; background:#ffe0d6; }
+  .progress-bar { height:100%; width:0%; background:linear-gradient(90deg,#ffb74d,#ff7043);
+    transition:width 0.4s; border-radius:0 3px 3px 0; }
+  .main { padding:22px 22px 26px; min-height:460px; }
+
+  .start-screen { text-align:center; padding:20px 6px; }
+  .start-screen .mascot { font-size:64px; margin-bottom:8px; animation:bounce 2s infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .start-screen h2 { font-size:22px; color:#e64a19; margin-bottom:6px; }
+  .start-screen p { font-size:13px; color:#78909c; line-height:1.7; margin-bottom:20px; }
+  .stage-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .stage-btn {
+    border:none; cursor:pointer; font-family:inherit; border-radius:18px;
+    padding:18px 8px; color:#fff; font-weight:700; transition:all 0.2s;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.15);
+  }
+  .stage-btn:active { transform:scale(0.96); }
+  .stage-btn .icon { font-size:26px; }
+  .stage-btn .name { font-size:15px; }
+  .stage-btn .count { font-size:11px; opacity:0.85; font-weight:400; }
+  .stage-btn.s1 { background:linear-gradient(135deg,#42a5f5,#1e88e5); }
+  .stage-btn.s2 { background:linear-gradient(135deg,#66bb6a,#43a047); }
+  .stage-btn.s3 { background:linear-gradient(135deg,#ffa726,#fb8c00); }
+  .stage-btn.s4 { background:linear-gradient(135deg,#ab47bc,#8e24aa); }
+  .stage-btn:disabled { background:#cfd8dc !important; box-shadow:none; cursor:not-allowed; }
+  .hint { font-size:12px; color:#b0bec5; margin-top:10px; }
+
+  .btn { border:none; cursor:pointer; font-family:inherit; transition:all 0.2s; user-select:none; }
+  .btn:active { transform:scale(0.96); }
+
+  .stage-label { display:inline-block; font-size:12px; font-weight:700; color:#fff;
+    padding:4px 12px; border-radius:20px; margin-bottom:6px; }
+  .stage-1 { background:#42a5f5; } .stage-2 { background:#66bb6a; } .stage-3 { background:#ab47bc; }
+  .qcount { float:right; font-size:12px; color:#90a4ae; margin-top:6px; }
+  .question-title { font-size:15px; color:#546e7a; margin-bottom:6px; font-weight:600; }
+  .question-title .big { font-size:40px; color:#263238; font-weight:800;
+    display:inline-block; margin:0 4px; vertical-align:middle; }
+  .pinyin-display { text-align:center; font-size:46px; font-weight:800; color:#e64a19;
+    letter-spacing:2px; padding:18px 0 10px; font-family:"Times New Roman",serif;
+    animation:fadeIn 0.4s; }
+  .hanzi-display { text-align:center; font-size:64px; font-weight:800; color:#1a237e;
+    padding:6px 0 14px; line-height:1.1; animation:fadeIn 0.4s; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .options { display:grid; gap:12px; margin-top:18px; }
+  .options.grid-3 { grid-template-columns:repeat(3,1fr); }
+  .opt-btn { background:#f5f7fa; border:2px solid #e0e6ed; border-radius:16px;
+    padding:18px 8px; font-size:22px; font-weight:700; color:#37474f; text-align:center;
+    line-height:1.3; }
+  .opt-btn.small { font-size:17px; padding:14px 6px; }
+  .opt-btn:hover { border-color:#90caf9; background:#e3f2fd; }
+  .opt-btn.correct { background:#c8e6c9 !important; border-color:#4caf50 !important;
+    color:#1b5e20 !important; animation:pop 0.3s; }
+  .opt-btn.wrong { background:#ffcdd2 !important; border-color:#ef5350 !important;
+    color:#b71c1c !important; animation:shake 0.4s; }
+  .opt-btn.disabled { pointer-events:none; opacity:0.65; }
+  .opt-btn.correct.disabled,.opt-btn.wrong.disabled { opacity:1; }
+  @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+  .feedback { margin-top:16px; min-height:44px; display:flex; align-items:center;
+    justify-content:center; gap:8px; font-size:16px; font-weight:700;
+    border-radius:12px; padding:10px; opacity:0; transition:opacity 0.25s; }
+  .feedback.show { opacity:1; }
+  .feedback.ok { color:#2e7d32; background:#e8f5e9; }
+  .feedback.no { color:#c62828; background:#ffebee; }
+  .feedback .icon { font-size:22px; }
+  .stroke-hint { margin-top:14px; background:#f3e5f5; border-left:4px solid #ab47bc;
+    border-radius:10px; padding:12px 14px; font-size:14px; color:#4a148c;
+    line-height:1.7; display:none; }
+  .stroke-hint.show { display:block; animation:fadeIn 0.3s; }
+  .stroke-hint b { color:#6a1b9a; }
+  .next-wrap { text-align:center; margin-top:20px; }
+  .btn-next { background:linear-gradient(135deg,#66bb6a,#43a047); color:#fff;
+    font-size:16px; font-weight:700; padding:13px 42px; border-radius:50px;
+    box-shadow:0 6px 16px rgba(67,160,71,0.35); display:none; }
+  .btn-next.show { display:inline-block; animation:fadeIn 0.3s; }
+  .result-screen { text-align:center; padding:16px 4px; }
+  .result-screen .trophy { font-size:76px; margin-bottom:6px; animation:bounce 2s infinite; }
+  .result-screen h2 { font-size:24px; color:#e64a19; margin-bottom:6px; }
+  .result-screen .final-score { font-size:46px; font-weight:800; color:#ff5722; margin:8px 0 2px; }
+  .result-screen .final-score span { font-size:20px; color:#90a4ae; }
+  .result-screen .stars { font-size:30px; letter-spacing:6px; margin:6px 0 18px; }
+  .result-screen .comment { font-size:15px; color:#546e7a; line-height:1.7; margin-bottom:24px; }
+  .result-screen .timeup { font-size:14px; color:#e65100; margin-bottom:14px; font-weight:700; }
+  .btn-restart { background:linear-gradient(135deg,#42a5f5,#1e88e5); color:#fff;
+    font-size:17px; font-weight:700; padding:14px 44px; border-radius:50px;
+    box-shadow:0 8px 20px rgba(30,136,229,0.35); margin:4px; }
+  .btn-home { background:linear-gradient(135deg,#bdbdbd,#9e9e9e); color:#fff;
+    font-size:15px; font-weight:700; padding:12px 32px; border-radius:50px; margin:4px; }
+  .confetti { position:fixed; top:-20px; font-size:18px; pointer-events:none;
+    z-index:999; animation:fall linear forwards; }
+  @keyframes fall { to { transform:translateY(105vh) rotate(360deg); opacity:0; } }
+  .dots { display:flex; gap:6px; justify-content:center; margin-top:18px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#cfd8dc; transition:all 0.3s; }
+  .dot.active { background:#ff7043; transform:scale(1.3); }
+  .dot.done { background:#a5d6a7; }
+  @media (max-width:400px) {
+    .main { padding:18px 16px 22px; }
+    .pinyin-display { font-size:38px; } .hanzi-display { font-size:54px; }
+    .opt-btn { font-size:19px; padding:15px 6px; } .opt-btn.small { font-size:15px; }
+    .stage-grid { gap:10px; }
+    .stage-btn { padding:14px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div><h1>📚 生字识字大闯关</h1><div class="sub" id="subTitle">选择学期开始</div></div>
+    <div class="topbar-right">
+      <div class="score-box"><div class="num" id="scoreNum">0</div><div class="lbl">得分</div></div>
+      <div class="timer-box" id="timerBox"><div class="num" id="timerNum">5:00</div><div class="lbl">剩余</div></div>
+    </div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+/* ============================================================
+   阶段数据（方案一精简表）
+   ============================================================ */
+const STAGES = {
+  s1: { name:'一年级上册', icon:'🍎', color:'s1', core: [
+    { hanzi:'一', pinyin:'yī',   totalStrokes:1, strokeOrder:'横' },
+    { hanzi:'二', pinyin:'èr',   totalStrokes:2, strokeOrder:'横、横' },
+    { hanzi:'三', pinyin:'sān',  totalStrokes:3, strokeOrder:'横、横、横' },
+    { hanzi:'上', pinyin:'shàng',totalStrokes:3, strokeOrder:'竖、横、横' },
+    { hanzi:'口', pinyin:'kǒu',  totalStrokes:3, strokeOrder:'竖、横折、横' },
+    { hanzi:'目', pinyin:'mù',   totalStrokes:5, strokeOrder:'竖、横折、横、横、横' },
+    { hanzi:'耳', pinyin:'ěr',   totalStrokes:6, strokeOrder:'横、竖、竖、横、横、横' },
+    { hanzi:'手', pinyin:'shǒu', totalStrokes:4, strokeOrder:'撇、横、横、弯钩' },
+    { hanzi:'日', pinyin:'rì',   totalStrokes:4, strokeOrder:'竖、横折、横、横' },
+    { hanzi:'火', pinyin:'huǒ',  totalStrokes:4, strokeOrder:'点、撇、撇、捺' },
+    { hanzi:'田', pinyin:'tián', totalStrokes:5, strokeOrder:'竖、横折、横、竖、横' },
+    { hanzi:'禾', pinyin:'hé',   totalStrokes:5, strokeOrder:'撇、横、竖、撇、捺' },
+    { hanzi:'六', pinyin:'liù',  totalStrokes:4, strokeOrder:'点、横、撇、点' },
+    { hanzi:'七', pinyin:'qī',   totalStrokes:2, strokeOrder:'横、竖弯钩' },
+    { hanzi:'八', pinyin:'bā',   totalStrokes:2, strokeOrder:'撇、捺' },
+    { hanzi:'十', pinyin:'shí',  totalStrokes:2, strokeOrder:'横、竖' },
+    { hanzi:'九', pinyin:'jiǔ',  totalStrokes:2, strokeOrder:'撇、横折弯钩' },
+    { hanzi:'王', pinyin:'wáng', totalStrokes:4, strokeOrder:'横、横、竖、横' },
+    { hanzi:'午', pinyin:'wǔ',   totalStrokes:4, strokeOrder:'撇、横、横、竖' },
+    { hanzi:'下', pinyin:'xià',  totalStrokes:3, strokeOrder:'横、竖、点' },
+    { hanzi:'去', pinyin:'qù',   totalStrokes:5, strokeOrder:'横、竖、横、撇折、点' },
+    { hanzi:'年', pinyin:'nián', totalStrokes:6, strokeOrder:'撇、横、横、竖、横、竖' },
+    { hanzi:'了', pinyin:'le',   totalStrokes:2, strokeOrder:'横撇、弯钩' },
+    { hanzi:'子', pinyin:'zǐ',   totalStrokes:3, strokeOrder:'横撇、弯钩、横' },
+    { hanzi:'人', pinyin:'rén',  totalStrokes:2, strokeOrder:'撇、捺' },
+    { hanzi:'大', pinyin:'dà',   totalStrokes:3, strokeOrder:'横、撇、捺' },
+    { hanzi:'可', pinyin:'kě',   totalStrokes:5, strokeOrder:'横、竖、横折、横、竖钩' },
+    { hanzi:'叶', pinyin:'yè',   totalStrokes:5, strokeOrder:'竖、横折、横、横、竖' },
+    { hanzi:'东', pinyin:'dōng', totalStrokes:5, strokeOrder:'横、撇折、竖钩、撇、点' },
+    { hanzi:'西', pinyin:'xī',   totalStrokes:6, strokeOrder:'横、竖、横折、撇、竖弯、横' },
+    { hanzi:'竹', pinyin:'zhú',  totalStrokes:6, strokeOrder:'撇、横、竖、撇、横、竖' },
+    { hanzi:'马', pinyin:'mǎ',   totalStrokes:3, strokeOrder:'横折、竖折折钩、横' },
+    { hanzi:'牙', pinyin:'yá',   totalStrokes:4, strokeOrder:'横、竖折、竖钩、撇' },
+    { hanzi:'用', pinyin:'yòng', totalStrokes:5, strokeOrder:'撇、横折钩、横、横、竖' },
+    { hanzi:'几', pinyin:'jǐ',   totalStrokes:2, strokeOrder:'撇、横折弯钩' },
+    { hanzi:'四', pinyin:'sì',   totalStrokes:5, strokeOrder:'竖、横折、撇、竖弯、横' },
+    { hanzi:'小', pinyin:'xiǎo', totalStrokes:3, strokeOrder:'竖钩、撇、点' },
+    { hanzi:'鸟', pinyin:'niǎo', totalStrokes:5, strokeOrder:'撇、横折钩、点、竖折折钩、横' },
+    { hanzi:'是', pinyin:'shì',  totalStrokes:9, strokeOrder:'竖、横折、横、横、横、竖、横、撇、捺' },
+    { hanzi:'天', pinyin:'tiān', totalStrokes:4, strokeOrder:'横、横、撇、捺' },
+    { hanzi:'女', pinyin:'nǚ',   totalStrokes:3, strokeOrder:'撇点、撇、横' },
+    { hanzi:'开', pinyin:'kāi',  totalStrokes:4, strokeOrder:'横、横、撇、竖' },
+    { hanzi:'关', pinyin:'guān', totalStrokes:6, strokeOrder:'点、撇、横、横、撇、捺' },
+    { hanzi:'先', pinyin:'xiān', totalStrokes:6, strokeOrder:'撇、横、竖、横、撇、竖弯钩' },
+    { hanzi:'云', pinyin:'yún',  totalStrokes:4, strokeOrder:'横、横、撇折、点' },
+    { hanzi:'雨', pinyin:'yǔ',   totalStrokes:8, strokeOrder:'横、竖、横折钩、竖、点、点、点、点' },
+    { hanzi:'虫', pinyin:'chóng',totalStrokes:6, strokeOrder:'竖、横折、横、竖、提、点' },
+    { hanzi:'山', pinyin:'shān', totalStrokes:3, strokeOrder:'竖、竖折、竖' },
+    { hanzi:'水', pinyin:'shuǐ', totalStrokes:4, strokeOrder:'竖钩、横撇、撇、捺' },
+    { hanzi:'力', pinyin:'lì',   totalStrokes:2, strokeOrder:'横折钩、撇' },
+    { hanzi:'男', pinyin:'nán',  totalStrokes:7, strokeOrder:'竖、横折、横、竖、横、横折钩、撇' },
+    { hanzi:'土', pinyin:'tǔ',   totalStrokes:3, strokeOrder:'横、竖、横' },
+    { hanzi:'木', pinyin:'mù',   totalStrokes:4, strokeOrder:'横、竖、撇、捺' },
+    { hanzi:'心', pinyin:'xīn',  totalStrokes:4, strokeOrder:'点、卧钩、点、点' },
+    { hanzi:'尺', pinyin:'chǐ',  totalStrokes:4, strokeOrder:'横折、横、撇、捺' },
+    { hanzi:'本', pinyin:'běn',  totalStrokes:5, strokeOrder:'横、竖、撇、捺、横' },
+    { hanzi:'刀', pinyin:'dāo',  totalStrokes:2, strokeOrder:'横折钩、撇' },
+    { hanzi:'不', pinyin:'bù',   totalStrokes:4, strokeOrder:'横、撇、竖、点' },
+    { hanzi:'少', pinyin:'shǎo', totalStrokes:4, strokeOrder:'竖、点、点、撇' },
+    { hanzi:'中', pinyin:'zhōng',totalStrokes:4, strokeOrder:'竖、横折、横、竖' },
+    { hanzi:'五', pinyin:'wǔ',   totalStrokes:4, strokeOrder:'横、竖、横折、横' },
+    { hanzi:'风', pinyin:'fēng', totalStrokes:4, strokeOrder:'撇、横折弯钩、撇、点' },
+    { hanzi:'立', pinyin:'lì',   totalStrokes:5, strokeOrder:'点、横、点、撇、横' },
+    { hanzi:'正', pinyin:'zhèng',totalStrokes:5, strokeOrder:'横、竖、横、竖、横' },
+    { hanzi:'工', pinyin:'gōng', totalStrokes:3, strokeOrder:'横、竖、横' },
+    { hanzi:'厂', pinyin:'chǎng',totalStrokes:2, strokeOrder:'横、撇' },
+    { hanzi:'在', pinyin:'zài',  totalStrokes:6, strokeOrder:'横、撇、竖、横、竖、横' },
+    { hanzi:'后', pinyin:'hòu',  totalStrokes:6, strokeOrder:'撇、撇、横、竖、横折、横' },
+    { hanzi:'我', pinyin:'wǒ',   totalStrokes:7, strokeOrder:'撇、横、竖钩、提、斜钩、撇、点' },
+    { hanzi:'好', pinyin:'hǎo',  totalStrokes:6, strokeOrder:'撇点、撇、横、横撇、弯钩、横' },
+    { hanzi:'长', pinyin:'cháng',totalStrokes:4, strokeOrder:'撇、横、竖提、捺' },
+    { hanzi:'比', pinyin:'bǐ',   totalStrokes:4, strokeOrder:'横、竖提、撇、竖弯钩' },
+    { hanzi:'巴', pinyin:'bā',   totalStrokes:4, strokeOrder:'横折、竖、横、竖弯钩' },
+    { hanzi:'把', pinyin:'bǎ',   totalStrokes:7, strokeOrder:'横、竖钩、提、横折、竖、横、竖弯钩' },
+    { hanzi:'个', pinyin:'gè',   totalStrokes:3, strokeOrder:'撇、捺、竖' },
+    { hanzi:'们', pinyin:'men',  totalStrokes:5, strokeOrder:'撇、竖、点、竖、横折钩' },
+    { hanzi:'问', pinyin:'wèn',  totalStrokes:6, strokeOrder:'点、竖、横折钩、竖、横折、横' },
+    { hanzi:'有', pinyin:'yǒu',  totalStrokes:6, strokeOrder:'横、撇、竖、横折钩、横、横' },
+    { hanzi:'半', pinyin:'bàn',  totalStrokes:5, strokeOrder:'点、撇、横、横、竖' },
+    { hanzi:'从', pinyin:'cóng', totalStrokes:4, strokeOrder:'撇、点、撇、捺' },
+    { hanzi:'你', pinyin:'nǐ',   totalStrokes:7, strokeOrder:'撇、竖、撇、横钩、竖钩、撇、点' },
+    { hanzi:'才', pinyin:'cái',  totalStrokes:3, strokeOrder:'横、竖钩、撇' },
+    { hanzi:'明', pinyin:'míng', totalStrokes:8, strokeOrder:'竖、横折、横、横、撇、横折钩、横、横' },
+    { hanzi:'同', pinyin:'tóng', totalStrokes:6, strokeOrder:'竖、横折钩、横、竖、横折、横' },
+    { hanzi:'学', pinyin:'xué',  totalStrokes:8, strokeOrder:'点、点、撇、点、横撇、横撇、竖钩、横' },
+    { hanzi:'自', pinyin:'zì',   totalStrokes:6, strokeOrder:'撇、竖、横折、横、横、横' },
+    { hanzi:'己', pinyin:'jǐ',   totalStrokes:3, strokeOrder:'横折、横、竖弯钩' },
+    { hanzi:'衣', pinyin:'yī',   totalStrokes:6, strokeOrder:'点、横、撇、竖提、撇、捺' },
+    { hanzi:'白', pinyin:'bái',  totalStrokes:5, strokeOrder:'撇、竖、横折、横、横' },
+    { hanzi:'的', pinyin:'de',   totalStrokes:8, strokeOrder:'撇、竖、横折、横、横、撇、横折钩、点' },
+    { hanzi:'又', pinyin:'yòu',  totalStrokes:2, strokeOrder:'横撇、捺' },
+    { hanzi:'和', pinyin:'hé',   totalStrokes:8, strokeOrder:'撇、横、竖、撇、点、竖、横折、横' },
+    { hanzi:'妈', pinyin:'mā',   totalStrokes:6, strokeOrder:'撇点、撇、横、横折、竖折折钩、横' },
+    { hanzi:'全', pinyin:'quán', totalStrokes:6, strokeOrder:'撇、捺、横、横、竖、横' },
+    { hanzi:'回', pinyin:'huí',  totalStrokes:6, strokeOrder:'竖、横折、竖、横折、横、横' },
+    { hanzi:'来', pinyin:'lái',  totalStrokes:7, strokeOrder:'横、点、撇、横、竖、撇、捺' },
+    { hanzi:'多', pinyin:'duō',  totalStrokes:6, strokeOrder:'撇、横撇、点、撇、横撇、点' },
+    { hanzi:'么', pinyin:'me',   totalStrokes:3, strokeOrder:'撇、撇折、点' }
+  ]},
+  s2: { name:'一年级下册', icon:'🌱', color:'s2', core: [
+  // 识字1 春夏秋冬
+  { hanzi:'春', pinyin:'chūn', totalStrokes:9, strokeOrder:'横、横、横、撇、捺、竖、横折、横、横' },
+  { hanzi:'风', pinyin:'fēng', totalStrokes:4, strokeOrder:'撇、横折弯钩、撇、点' },
+  { hanzi:'冬', pinyin:'dōng', totalStrokes:5, strokeOrder:'撇、横撇、捺、点、点' },
+  { hanzi:'雪', pinyin:'xuě', totalStrokes:11, strokeOrder:'横、点、横撇、竖、点、点、点、点、横折、横、横' },
+  { hanzi:'花', pinyin:'huā', totalStrokes:7, strokeOrder:'横、竖、竖、撇、竖、撇、竖弯钩' },
+  { hanzi:'飞', pinyin:'fēi', totalStrokes:3, strokeOrder:'横折弯钩、撇、点' },
+  { hanzi:'入', pinyin:'rù', totalStrokes:2, strokeOrder:'撇、捺' },
+  // 识字2 姓氏歌
+  { hanzi:'姓', pinyin:'xìng', totalStrokes:8, strokeOrder:'撇点、撇、横、撇、横、横、竖、横' },
+  { hanzi:'什', pinyin:'shén', totalStrokes:4, strokeOrder:'撇、竖、横、竖' },
+  { hanzi:'么', pinyin:'me', totalStrokes:3, strokeOrder:'撇、撇折、点' },
+  { hanzi:'双', pinyin:'shuāng', totalStrokes:4, strokeOrder:'横撇、点、横撇、捺' },
+  { hanzi:'国', pinyin:'guó', totalStrokes:8, strokeOrder:'竖、横折、横、横、竖、横、点、横' },
+  { hanzi:'王', pinyin:'wáng', totalStrokes:4, strokeOrder:'横、横、竖、横' },
+  { hanzi:'方', pinyin:'fāng', totalStrokes:4, strokeOrder:'点、横、横折钩、撇' },
+  // 识字3 小青蛙
+  { hanzi:'青', pinyin:'qīng', totalStrokes:8, strokeOrder:'横、横、竖、横、竖、横折钩、横、横' },
+  { hanzi:'清', pinyin:'qīng', totalStrokes:11, strokeOrder:'点、点、提、横、横、竖、横、竖、横折钩、横、横' },
+  { hanzi:'气', pinyin:'qì', totalStrokes:4, strokeOrder:'撇、横、横、横折弯钩' },
+  { hanzi:'晴', pinyin:'qíng', totalStrokes:12, strokeOrder:'竖、横折、横、横、横、横、竖、横、竖、横折钩、横、横' },
+  { hanzi:'情', pinyin:'qíng', totalStrokes:11, strokeOrder:'点、点、竖、横、横、竖、横、竖、横折钩、横、横' },
+  { hanzi:'请', pinyin:'qǐng', totalStrokes:10, strokeOrder:'点、横折提、横、横、竖、横、竖、横折钩、横、横' },
+  { hanzi:'生', pinyin:'shēng', totalStrokes:5, strokeOrder:'撇、横、横、竖、横' },
+  // 识字4 猜字谜
+  { hanzi:'字', pinyin:'zì', totalStrokes:6, strokeOrder:'点、点、横撇、横撇、竖钩、横' },
+  { hanzi:'左', pinyin:'zuǒ', totalStrokes:5, strokeOrder:'横、撇、横、竖、横' },
+  { hanzi:'右', pinyin:'yòu', totalStrokes:5, strokeOrder:'横、撇、竖、横折、横' },
+  { hanzi:'红', pinyin:'hóng', totalStrokes:6, strokeOrder:'撇折、撇折、提、横、竖、横' },
+  { hanzi:'时', pinyin:'shí', totalStrokes:7, strokeOrder:'竖、横折、横、横、横、竖钩、点' },
+  { hanzi:'动', pinyin:'dòng', totalStrokes:6, strokeOrder:'横、横、撇折、点、横折钩、撇' },
+  { hanzi:'万', pinyin:'wàn', totalStrokes:3, strokeOrder:'横、横折钩、撇' },
+  // 课文1 吃水不忘挖井人
+  { hanzi:'吃', pinyin:'chī', totalStrokes:6, strokeOrder:'竖、横折、横、撇、横、横折弯钩' },
+  { hanzi:'叫', pinyin:'jiào', totalStrokes:5, strokeOrder:'竖、横折、横、竖提、竖' },
+  { hanzi:'主', pinyin:'zhǔ', totalStrokes:5, strokeOrder:'点、横、横、竖、横' },
+  { hanzi:'江', pinyin:'jiāng', totalStrokes:6, strokeOrder:'点、点、提、横、竖、横' },
+  { hanzi:'住', pinyin:'zhù', totalStrokes:7, strokeOrder:'撇、竖、点、横、横、竖、横' },
+  { hanzi:'没', pinyin:'méi', totalStrokes:7, strokeOrder:'点、点、提、撇、横折折/横折弯、横撇、捺' },
+  { hanzi:'以', pinyin:'yǐ', totalStrokes:4, strokeOrder:'竖提、点、撇、点' },
+  // 课文2 我多想去看看
+  { hanzi:'会', pinyin:'huì', totalStrokes:6, strokeOrder:'撇、捺、横、横、撇折、点' },
+  { hanzi:'走', pinyin:'zǒu', totalStrokes:7, strokeOrder:'横、竖、横、竖、横、撇、捺' },
+  { hanzi:'北', pinyin:'běi', totalStrokes:5, strokeOrder:'竖、横、提、撇、竖弯钩' },
+  { hanzi:'京', pinyin:'jīng', totalStrokes:8, strokeOrder:'点、横、竖、横折、横、竖钩、撇、点' },
+  { hanzi:'门', pinyin:'mén', totalStrokes:3, strokeOrder:'点、竖、横折钩' },
+  { hanzi:'广', pinyin:'guǎng', totalStrokes:3, strokeOrder:'点、横、撇' },
+  // 课文3 一个接一个
+  { hanzi:'过', pinyin:'guò', totalStrokes:6, strokeOrder:'横、竖钩、点、点、横折折撇、捺' },
+  { hanzi:'各', pinyin:'gè', totalStrokes:6, strokeOrder:'撇、横撇、捺、竖、横折、横' },
+  { hanzi:'种', pinyin:'zhǒng', totalStrokes:9, strokeOrder:'撇、横、竖、撇、点、竖、横折、横、横' },
+  { hanzi:'样', pinyin:'yàng', totalStrokes:10, strokeOrder:'横、竖、撇、点、点、撇、横、横、横、竖' },
+  { hanzi:'伙', pinyin:'huǒ', totalStrokes:6, strokeOrder:'撇、竖、点、撇、撇、捺' },
+  { hanzi:'伴', pinyin:'bàn', totalStrokes:7, strokeOrder:'撇、竖、点、撇、横、横、竖' },
+  // 课文4 四个太阳
+  { hanzi:'这', pinyin:'zhè', totalStrokes:7, strokeOrder:'点、横、撇、点、点、横折折撇、捺' },
+  { hanzi:'太', pinyin:'tài', totalStrokes:4, strokeOrder:'横、撇、捺、点' },
+  { hanzi:'阳', pinyin:'yáng', totalStrokes:6, strokeOrder:'横折折折钩/横撇弯钩、竖、竖、横折、横、横' },
+  { hanzi:'校', pinyin:'xiào', totalStrokes:10, strokeOrder:'横、竖、撇、点、点、横、撇、点、撇、捺' },
+  { hanzi:'金', pinyin:'jīn', totalStrokes:8, strokeOrder:'撇、捺、横、横、竖、点、撇、横' },
+  { hanzi:'秋', pinyin:'qiū', totalStrokes:9, strokeOrder:'撇、横、竖、撇、点、点、撇、撇、捺' },
+  { hanzi:'因', pinyin:'yīn', totalStrokes:6, strokeOrder:'竖、横折、横、撇、点、横' },
+  { hanzi:'为', pinyin:'wèi', totalStrokes:4, strokeOrder:'点、撇、横折钩、点' },
+  // 课文5 小公鸡和小鸭子
+  { hanzi:'他', pinyin:'tā', totalStrokes:5, strokeOrder:'撇、竖、横折钩、竖、竖弯钩' },
+  { hanzi:'河', pinyin:'hé', totalStrokes:8, strokeOrder:'点、点、提、横、竖、横折、横、竖钩' },
+  { hanzi:'说', pinyin:'shuō', totalStrokes:9, strokeOrder:'点、横折提、点、撇、竖、横折、横、撇、竖弯钩' },
+  { hanzi:'也', pinyin:'yě', totalStrokes:3, strokeOrder:'横折钩、竖、竖弯钩' },
+  { hanzi:'听', pinyin:'tīng', totalStrokes:7, strokeOrder:'竖、横折、横、撇、撇、横、竖' },
+  { hanzi:'地', pinyin:'dì', totalStrokes:6, strokeOrder:'横、竖、提、横折钩、竖、竖弯钩' },
+  { hanzi:'哥', pinyin:'gē', totalStrokes:10, strokeOrder:'横、竖、横折、横、竖、横、竖、横折、横、竖钩' },
+  // 课文6 树和喜鹊
+  { hanzi:'居', pinyin:'jū', totalStrokes:8, strokeOrder:'横折、横、撇、横、竖、竖、横折、横' },
+  { hanzi:'单', pinyin:'dān', totalStrokes:8, strokeOrder:'点、撇、竖、横折、横、横、横、竖' },
+  { hanzi:'乐', pinyin:'lè', totalStrokes:5, strokeOrder:'撇、竖折/竖弯、竖钩、撇、点' },
+  { hanzi:'招', pinyin:'zhāo', totalStrokes:8, strokeOrder:'横、竖钩、提、横折钩、撇、竖、横折、横' },
+  { hanzi:'快', pinyin:'kuài', totalStrokes:7, strokeOrder:'点、点、竖、横折、横、撇、捺' },
+  { hanzi:'呼', pinyin:'hū', totalStrokes:8, strokeOrder:'竖、横折、横、撇、点、撇、横、竖钩' },
+  // 课文7 怎么都快乐
+  { hanzi:'玩', pinyin:'wán', totalStrokes:8, strokeOrder:'横、横、竖、提、横、横、撇、竖弯钩' },
+  { hanzi:'很', pinyin:'hěn', totalStrokes:9, strokeOrder:'撇、撇、竖、横折、横、横、竖提、撇、捺' },
+  { hanzi:'音', pinyin:'yīn', totalStrokes:9, strokeOrder:'点、横、点、撇、横、竖、横折、横、横' },
+  { hanzi:'行', pinyin:'xíng', totalStrokes:6, strokeOrder:'撇、撇、竖、横、横、竖钩' },
+  { hanzi:'讲', pinyin:'jiǎng', totalStrokes:6, strokeOrder:'点、横折提、横、横、撇、竖' },
+  // 课文8 静夜思
+  { hanzi:'思', pinyin:'sī', totalStrokes:9, strokeOrder:'竖、横折、横、竖、横、点、卧钩、点、点' },
+  { hanzi:'床', pinyin:'chuáng', totalStrokes:7, strokeOrder:'点、横、撇、横、竖、撇、捺' },
+  { hanzi:'前', pinyin:'qián', totalStrokes:9, strokeOrder:'点、撇、横、竖、横折钩、横、横、竖、竖钩' },
+  { hanzi:'光', pinyin:'guāng', totalStrokes:6, strokeOrder:'竖、点、撇、横、撇、竖弯钩' },
+  { hanzi:'低', pinyin:'dī', totalStrokes:7, strokeOrder:'撇、竖、撇、竖提、横、斜钩、点' },
+  { hanzi:'故', pinyin:'gù', totalStrokes:9, strokeOrder:'横、竖、竖、横折、横、撇、横、撇、捺' },
+  { hanzi:'乡', pinyin:'xiāng', totalStrokes:3, strokeOrder:'撇折、撇折、撇' },
+  // 课文9 夜色
+  { hanzi:'色', pinyin:'sè', totalStrokes:6, strokeOrder:'撇、横撇/横钩、横折、竖、横、竖弯钩' },
+  { hanzi:'外', pinyin:'wài', totalStrokes:5, strokeOrder:'撇、横撇、点、竖、点' },
+  { hanzi:'看', pinyin:'kàn', totalStrokes:9, strokeOrder:'撇、横、横、撇、竖、横折、横、横、横' },
+  { hanzi:'爸', pinyin:'bà', totalStrokes:8, strokeOrder:'撇、点、撇、捺、横折、竖、横、竖弯钩' },
+  { hanzi:'晚', pinyin:'wǎn', totalStrokes:11, strokeOrder:'竖、横折、横、横、撇、横撇、竖、横折、横、撇、竖弯钩' },
+  { hanzi:'笑', pinyin:'xiào', totalStrokes:10, strokeOrder:'撇、横、点、撇、横、点、撇、横、撇、捺' },
+  { hanzi:'再', pinyin:'zài', totalStrokes:6, strokeOrder:'横、竖、横折钩、竖、横、横' },
+  // 课文10 端午粽
+  { hanzi:'午', pinyin:'wǔ', totalStrokes:4, strokeOrder:'撇、横、横、竖' },
+  { hanzi:'节', pinyin:'jié', totalStrokes:5, strokeOrder:'横、竖、竖、横折钩、竖' },
+  { hanzi:'叶', pinyin:'yè', totalStrokes:5, strokeOrder:'竖、横折、横、横、竖' },
+  { hanzi:'米', pinyin:'mǐ', totalStrokes:6, strokeOrder:'点、撇、横、竖、撇、捺' },
+  { hanzi:'真', pinyin:'zhēn', totalStrokes:10, strokeOrder:'横、竖、竖、横折、横、横、横、横、撇、点' },
+  { hanzi:'分', pinyin:'fēn', totalStrokes:4, strokeOrder:'撇、捺、横折钩、撇' },
+  { hanzi:'豆', pinyin:'dòu', totalStrokes:7, strokeOrder:'横、竖、横折、横、点、撇、横' },
+  // 课文11 彩虹
+  { hanzi:'那', pinyin:'nà', totalStrokes:6, strokeOrder:'横折钩、横、横、撇、横折折折钩/横撇弯钩、竖' },
+  { hanzi:'着', pinyin:'zhe', totalStrokes:11, strokeOrder:'点、撇、横、横、横、撇、竖、横折、横、横、横' },
+  { hanzi:'到', pinyin:'dào', totalStrokes:8, strokeOrder:'横、撇折、点、横、竖、提、竖、竖钩' },
+  { hanzi:'高', pinyin:'gāo', totalStrokes:10, strokeOrder:'点、横、竖、横折、横、竖、横折钩、竖、横折、横' },
+  { hanzi:'兴', pinyin:'xìng', totalStrokes:6, strokeOrder:'点、点、撇、横、撇、点' },
+  { hanzi:'千', pinyin:'qiān', totalStrokes:3, strokeOrder:'撇、横、竖' },
+  // 识字5 动物儿歌
+  { hanzi:'间', pinyin:'jiān', totalStrokes:7, strokeOrder:'点、竖、横折钩、竖、横折、横、横' },
+  { hanzi:'迷', pinyin:'mí', totalStrokes:9, strokeOrder:'点、撇、横、竖、撇、点、点、横折折撇、捺' },
+  { hanzi:'造', pinyin:'zào', totalStrokes:10, strokeOrder:'撇、横、竖、横、竖、横折、横、点、横折折撇、捺' },
+  { hanzi:'运', pinyin:'yùn', totalStrokes:7, strokeOrder:'横、横、撇折、点、点、横折折撇、捺' },
+  { hanzi:'池', pinyin:'chí', totalStrokes:6, strokeOrder:'点、点、提、横折钩、竖、竖弯钩' },
+  { hanzi:'欢', pinyin:'huān', totalStrokes:6, strokeOrder:'横撇、点、撇、横撇、撇、捺' },
+  { hanzi:'网', pinyin:'wǎng', totalStrokes:6, strokeOrder:'竖、横折钩、撇、点、撇、点' },
+  // 识字6 古对今
+  { hanzi:'古', pinyin:'gǔ', totalStrokes:5, strokeOrder:'横、竖、竖、横折、横' },
+  { hanzi:'凉', pinyin:'liáng', totalStrokes:10, strokeOrder:'点、提、点、横、竖、横折、横、竖钩、撇、点' },
+  { hanzi:'细', pinyin:'xì', totalStrokes:8, strokeOrder:'撇折、撇折、提、竖、横折、横、竖、横' },
+  { hanzi:'夕', pinyin:'xī', totalStrokes:3, strokeOrder:'撇、横撇、点' },
+  { hanzi:'李', pinyin:'lǐ', totalStrokes:7, strokeOrder:'横、竖、撇、捺、横撇、竖钩、横' },
+  { hanzi:'语', pinyin:'yǔ', totalStrokes:9, strokeOrder:'点、横折提、横、竖、横折、横、竖、横折、横' },
+  { hanzi:'香', pinyin:'xiāng', totalStrokes:9, strokeOrder:'撇、横、竖、撇、捺、竖、横折、横、横' },
+  // 识字7 操场上
+  { hanzi:'打', pinyin:'dǎ', totalStrokes:5, strokeOrder:'横、竖钩、提、横、竖钩' },
+  { hanzi:'拍', pinyin:'pāi', totalStrokes:8, strokeOrder:'横、竖钩、提、撇、竖、横折、横、横' },
+  { hanzi:'跑', pinyin:'pǎo', totalStrokes:12, strokeOrder:'竖、横折、横、竖、横、竖、提、撇、横折钩、横折、横、竖弯钩' },
+  { hanzi:'足', pinyin:'zú', totalStrokes:7, strokeOrder:'竖、横折、横、竖、横、撇、捺' },
+  { hanzi:'声', pinyin:'shēng', totalStrokes:7, strokeOrder:'横、竖、横、横折、竖、横、撇' },
+  { hanzi:'身', pinyin:'shēn', totalStrokes:7, strokeOrder:'撇、竖、横折钩、横、横、横、撇' },
+  { hanzi:'体', pinyin:'tǐ', totalStrokes:7, strokeOrder:'撇、竖、横、竖、撇、捺、横' },
+  // 识字8 人之初
+  { hanzi:'之', pinyin:'zhī', totalStrokes:3, strokeOrder:'点、横撇、捺' },
+  { hanzi:'相', pinyin:'xiāng', totalStrokes:9, strokeOrder:'横、竖、撇、点、竖、横折、横、横、横' },
+  { hanzi:'近', pinyin:'jìn', totalStrokes:7, strokeOrder:'撇、撇、竖、点、横折折撇、捺' },
+  { hanzi:'习', pinyin:'xí', totalStrokes:3, strokeOrder:'横折钩、点、提' },
+  { hanzi:'远', pinyin:'yuǎn', totalStrokes:7, strokeOrder:'横、横、撇折、点、点、横折折撇、捺' },
+  { hanzi:'玉', pinyin:'yù', totalStrokes:5, strokeOrder:'横、横、竖、横、点' },
+  { hanzi:'义', pinyin:'yì', totalStrokes:3, strokeOrder:'点、撇、捺' }
+]},
+  s3: { name:'二年级上册（新版）', icon:'🍊', color:'s3', core: [
+  // 课文1 小蝌蚪找妈妈
+  { hanzi:'两', pinyin:'liǎng', totalStrokes:7, strokeOrder:'横、竖、横折钩、撇、点、撇、点' },
+  { hanzi:'条', pinyin:'tiáo', totalStrokes:7, strokeOrder:'撇、横撇、捺、横、竖、撇、点' },
+  { hanzi:'哪', pinyin:'nǎ', totalStrokes:9, strokeOrder:'竖、横折、横、横折钩、横、横、撇、横撇、捺' },
+  { hanzi:'宽', pinyin:'kuān', totalStrokes:10, strokeOrder:'点、点、横撇、横、竖、竖、竖、横折、撇、点' },
+  { hanzi:'那', pinyin:'nà', totalStrokes:7, strokeOrder:'横折钩、横、横、撇、横折折折钩、竖' },
+  { hanzi:'短', pinyin:'duǎn', totalStrokes:12, strokeOrder:'撇、横、横、撇、点、横、竖、横折、横、点、撇、横' },
+  { hanzi:'孩', pinyin:'hái', totalStrokes:9, strokeOrder:'横撇、弯钩、横、点、横、撇折、撇、撇、点' },
+  { hanzi:'成', pinyin:'chéng', totalStrokes:6, strokeOrder:'横、撇、横折钩、斜钩、撇、点' },
+  // 课文2 我是什么
+  { hanzi:'升', pinyin:'shēng', totalStrokes:4, strokeOrder:'撇、横、撇、竖' },
+  { hanzi:'连', pinyin:'lián', totalStrokes:7, strokeOrder:'横、撇折、横、竖、点、横折折撇、捺' },
+  { hanzi:'起', pinyin:'qǐ', totalStrokes:10, strokeOrder:'横、竖、横、竖、横、撇、捺、横折、横、竖弯钩' },
+  { hanzi:'海', pinyin:'hǎi', totalStrokes:10, strokeOrder:'点、点、提、撇、横、竖折、横折、横、点、横、点' },
+  { hanzi:'洋', pinyin:'yáng', totalStrokes:9, strokeOrder:'点、点、提、点、撇、横、横、横、竖' },
+  { hanzi:'许', pinyin:'xǔ', totalStrokes:6, strokeOrder:'点、横折提、撇、横、横、竖' },
+  { hanzi:'作', pinyin:'zuò', totalStrokes:7, strokeOrder:'撇、竖、撇、横、竖、横、横' },
+  { hanzi:'办', pinyin:'bàn', totalStrokes:4, strokeOrder:'横折钩、撇、点、点' },
+  { hanzi:'法', pinyin:'fǎ', totalStrokes:8, strokeOrder:'点、点、提、横、竖、横、撇折、点' },
+  // 课文3 植物妈妈有办法
+  { hanzi:'如', pinyin:'rú', totalStrokes:6, strokeOrder:'撇点、撇、横、竖、横折、横' },
+  { hanzi:'已', pinyin:'yǐ', totalStrokes:3, strokeOrder:'横折、横、竖弯钩' },
+  { hanzi:'经', pinyin:'jīng', totalStrokes:8, strokeOrder:'撇折、撇折、提、横撇、点、横、竖、横' },
+  { hanzi:'别', pinyin:'bié', totalStrokes:7, strokeOrder:'竖、横折、横、横折钩、撇、竖、竖钩' },
+  // 语文园地一
+  { hanzi:'转', pinyin:'zhuǎn', totalStrokes:8, strokeOrder:'横、撇折、竖、提、横、横、竖折撇、点' },
+  { hanzi:'夹', pinyin:'jiā', totalStrokes:6, strokeOrder:'横、点、撇、横、撇、捺' },
+  // 识字1 场景歌
+  { hanzi:'处', pinyin:'chù', totalStrokes:5, strokeOrder:'撇、横撇、捺、竖、点' },
+  { hanzi:'块', pinyin:'kuài', totalStrokes:7, strokeOrder:'横、竖、提、横折、横、撇、捺' },
+  { hanzi:'座', pinyin:'zuò', totalStrokes:10, strokeOrder:'点、横、撇、点、撇、点、横、竖、横、横' },
+  { hanzi:'园', pinyin:'yuán', totalStrokes:7, strokeOrder:'竖、横折、横、横、撇、竖弯钩、横' },
+  { hanzi:'群', pinyin:'qún', totalStrokes:13, strokeOrder:'横折、横、横、撇、竖、横折、横、点、撇、横、横、横、竖' },
+  { hanzi:'队', pinyin:'duì', totalStrokes:4, strokeOrder:'横折折折钩、竖、撇、捺' },
+  { hanzi:'领', pinyin:'lǐng', totalStrokes:11, strokeOrder:'撇、捺、点、横撇、点、横、撇、竖、横折、撇、点' },
+  // 识字2 树之歌
+  { hanzi:'树', pinyin:'shù', totalStrokes:9, strokeOrder:'横、竖、撇、点、横撇、点、横、竖钩、点' },
+  { hanzi:'之', pinyin:'zhī', totalStrokes:3, strokeOrder:'点、横撇、捺' },
+  { hanzi:'杨', pinyin:'yáng', totalStrokes:7, strokeOrder:'横、竖、撇、点、横折折折钩、撇、撇' },
+  { hanzi:'松', pinyin:'sōng', totalStrokes:8, strokeOrder:'横、竖、撇、点、撇、捺、撇折、点' },
+  { hanzi:'柏', pinyin:'bǎi', totalStrokes:9, strokeOrder:'横、竖、撇、点、撇、竖、横折、横、横' },
+  { hanzi:'化', pinyin:'huà', totalStrokes:4, strokeOrder:'撇、竖、撇、竖弯钩' },
+  { hanzi:'金', pinyin:'jīn', totalStrokes:8, strokeOrder:'撇、捺、横、横、竖、点、撇、横' },
+  { hanzi:'桂', pinyin:'guì', totalStrokes:10, strokeOrder:'横、竖、撇、点、横、竖、横、横、竖、横' },
+  // 识字3 拍手歌
+  { hanzi:'拍', pinyin:'pāi', totalStrokes:8, strokeOrder:'横、竖钩、提、撇、竖、横折、横、横' },
+  { hanzi:'世', pinyin:'shì', totalStrokes:5, strokeOrder:'横、竖、竖、横、竖折' },
+  { hanzi:'界', pinyin:'jiè', totalStrokes:9, strokeOrder:'竖、横折、横、竖、横、撇、捺、撇、竖' },
+  { hanzi:'彩', pinyin:'cǎi', totalStrokes:11, strokeOrder:'撇、点、点、撇、横、竖、撇、点、撇、撇、撇' },
+  { hanzi:'丛', pinyin:'cóng', totalStrokes:5, strokeOrder:'撇、点、撇、捺、横' },
+  { hanzi:'休', pinyin:'xiū', totalStrokes:6, strokeOrder:'撇、竖、横、竖、撇、捺' },
+  { hanzi:'朋', pinyin:'péng', totalStrokes:8, strokeOrder:'撇、横折钩、横、横、撇、横折钩、横、横' },
+  { hanzi:'友', pinyin:'yǒu', totalStrokes:4, strokeOrder:'横、撇、横撇、捺' },
+  { hanzi:'保', pinyin:'bǎo', totalStrokes:9, strokeOrder:'撇、竖、竖、横折、横、横、竖、撇、捺' },
+  { hanzi:'护', pinyin:'hù', totalStrokes:7, strokeOrder:'横、竖钩、提、点、横折、横、撇' },
+  // 识字4 田家四季歌
+  { hanzi:'季', pinyin:'jì', totalStrokes:8, strokeOrder:'撇、横、竖、撇、点、横撇、竖钩、横' },
+  { hanzi:'肥', pinyin:'féi', totalStrokes:8, strokeOrder:'撇、横折钩、横、横、横折、竖、横、竖弯钩' },
+  { hanzi:'农', pinyin:'nóng', totalStrokes:6, strokeOrder:'点、横钩、撇、竖提、撇、捺' },
+  { hanzi:'事', pinyin:'shì', totalStrokes:8, strokeOrder:'横、竖、横折、横、横折、横、横、竖钩' },
+  { hanzi:'谷', pinyin:'gǔ', totalStrokes:7, strokeOrder:'撇、点、撇、捺、竖、横折、横' },
+  { hanzi:'体', pinyin:'tǐ', totalStrokes:7, strokeOrder:'撇、竖、横、竖、撇、捺、横' },
+  { hanzi:'虽', pinyin:'suī', totalStrokes:9, strokeOrder:'竖、横折、横、竖、横折、横、竖、横、横' },
+  { hanzi:'辛', pinyin:'xīn', totalStrokes:7, strokeOrder:'点、横、点、撇、横、横、竖' },
+  { hanzi:'苦', pinyin:'kǔ', totalStrokes:8, strokeOrder:'横、竖、竖、横、竖、竖、横折、横' },
+  { hanzi:'初', pinyin:'chū', totalStrokes:7, strokeOrder:'点、横撇、竖、撇、点、横折钩、撇' },
+  // 语文园地二
+  { hanzi:'丑', pinyin:'chǒu', totalStrokes:4, strokeOrder:'横折、竖、横、横' },
+  { hanzi:'诚', pinyin:'chéng', totalStrokes:8, strokeOrder:'点、横折提、横、撇、横折钩、斜钩、撇、点' },
+  // 课文4 彩虹
+  { hanzi:'丽', pinyin:'lì', totalStrokes:7, strokeOrder:'横、竖、横折钩、点、竖、横折钩、点' },
+  { hanzi:'提', pinyin:'tí', totalStrokes:12, strokeOrder:'横、竖钩、提、竖、横折、横、横、横、竖、横、撇、捺' },
+  { hanzi:'吗', pinyin:'ma', totalStrokes:6, strokeOrder:'竖、横折、横、横折、竖折折钩、横' },
+  { hanzi:'圆', pinyin:'yuán', totalStrokes:10, strokeOrder:'竖、横折、竖、横折、横、竖、横折、撇、点、横' },
+  { hanzi:'哥', pinyin:'gē', totalStrokes:10, strokeOrder:'横、竖、横折、横、竖、横、竖、横折、横、竖钩' },
+  { hanzi:'秋', pinyin:'qiū', totalStrokes:9, strokeOrder:'撇、横、竖、撇、点、点、撇、撇、捺' },
+  // 课文4 曹冲称象
+  { hanzi:'称', pinyin:'chēng', totalStrokes:10, strokeOrder:'撇、横、竖、撇、点、撇、横撇、竖钩、撇、点' },
+  { hanzi:'柱', pinyin:'zhù', totalStrokes:9, strokeOrder:'横、竖、撇、点、点、横、横、竖、横' },
+  { hanzi:'底', pinyin:'dǐ', totalStrokes:8, strokeOrder:'点、横、撇、撇、竖提、横、斜钩、点' },
+  { hanzi:'杆', pinyin:'gǎn', totalStrokes:7, strokeOrder:'横、竖、撇、点、横、横、竖' },
+  { hanzi:'秤', pinyin:'chèng', totalStrokes:10, strokeOrder:'撇、横、竖、撇、点、横、点、撇、横、竖' },
+  { hanzi:'做', pinyin:'zuò', totalStrokes:11, strokeOrder:'撇、竖、横、竖、竖、横折、横、撇、横、撇、捺' },
+  { hanzi:'岁', pinyin:'suì', totalStrokes:6, strokeOrder:'竖、竖折、竖、撇、横撇、点' },
+  { hanzi:'站', pinyin:'zhàn', totalStrokes:10, strokeOrder:'点、横、点、撇、提、竖、横、竖、横折、横' },
+  { hanzi:'船', pinyin:'chuán', totalStrokes:11, strokeOrder:'撇、撇、横折钩、点、横、点、撇、横折折、竖、横折、横' },
+  { hanzi:'然', pinyin:'rán', totalStrokes:12, strokeOrder:'撇、横撇、点、点、撇、横撇、点、点、横、撇、捺、点' },
+  // 课文5 玲玲的画
+  { hanzi:'画', pinyin:'huà', totalStrokes:8, strokeOrder:'横、竖、横折、横、竖、横、竖折、竖' },
+  { hanzi:'幅', pinyin:'fú', totalStrokes:12, strokeOrder:'竖、横折钩、竖、横、竖、横折、横、竖、横、竖、横折、横' },
+  { hanzi:'评', pinyin:'píng', totalStrokes:7, strokeOrder:'点、横折提、横、点、撇、横、竖' },
+  { hanzi:'奖', pinyin:'jiǎng', totalStrokes:9, strokeOrder:'点、提、竖、横折、横、竖钩、撇、横撇、捺' },
+  { hanzi:'纸', pinyin:'zhǐ', totalStrokes:7, strokeOrder:'撇折、撇折、提、撇、竖提、横、斜钩' },
+  { hanzi:'报', pinyin:'bào', totalStrokes:7, strokeOrder:'横、竖钩、提、横折钩、竖、横撇、捺' },
+  { hanzi:'另', pinyin:'lìng', totalStrokes:5, strokeOrder:'竖、横折、横、横折钩、撇' },
+  { hanzi:'及', pinyin:'jí', totalStrokes:3, strokeOrder:'撇、横折折撇、捺' },
+  { hanzi:'拿', pinyin:'ná', totalStrokes:10, strokeOrder:'撇、捺、横、竖、横折、横、撇、横、竖钩、点' },
+  { hanzi:'并', pinyin:'bìng', totalStrokes:6, strokeOrder:'点、撇、横、横、撇、竖' },
+  // 课文6 一封信
+  { hanzi:'封', pinyin:'fēng', totalStrokes:9, strokeOrder:'横、竖、横、横、竖、提、横、竖钩、点' },
+  { hanzi:'信', pinyin:'xìn', totalStrokes:9, strokeOrder:'撇、竖、点、横、横、横、竖、横折、横' },
+  { hanzi:'支', pinyin:'zhī', totalStrokes:4, strokeOrder:'横、竖、横撇、捺' },
+  { hanzi:'圆', pinyin:'yuán', totalStrokes:10, strokeOrder:'竖、横折、竖、横折、横、竖、横折、撇、点、横' },
+  { hanzi:'珠', pinyin:'zhū', totalStrokes:10, strokeOrder:'横、横、竖、提、撇、横、横、竖、撇、捺' },
+  { hanzi:'笔', pinyin:'bǐ', totalStrokes:10, strokeOrder:'撇、横、点、撇、横、点、撇、横、横、竖弯钩' },
+  { hanzi:'灯', pinyin:'dēng', totalStrokes:6, strokeOrder:'点、撇、撇、点、横、竖钩' },
+  { hanzi:'句', pinyin:'jù', totalStrokes:5, strokeOrder:'撇、横折钩、竖、横折、横' },
+  { hanzi:'电', pinyin:'diàn', totalStrokes:5, strokeOrder:'竖、横折、横、横、竖弯钩' },
+  { hanzi:'影', pinyin:'yǐng', totalStrokes:15, strokeOrder:'竖、横折、横、横、点、横、竖、横折、横、竖钩、撇、点、撇、撇、撇' },
+  // 课文7 妈妈睡了
+  { hanzi:'哄', pinyin:'hǒng', totalStrokes:9, strokeOrder:'竖、横折、横、横、竖、竖、横、撇、点' },
+  { hanzi:'先', pinyin:'xiān', totalStrokes:6, strokeOrder:'撇、横、竖、横、撇、竖弯钩' },
+  { hanzi:'闭', pinyin:'bì', totalStrokes:6, strokeOrder:'点、竖、横折钩、横、竖、撇' },
+  { hanzi:'脸', pinyin:'liǎn', totalStrokes:11, strokeOrder:'撇、横折钩、横、横、撇、捺、横、竖、横折、横、横' },
+  { hanzi:'事', pinyin:'shì', totalStrokes:8, strokeOrder:'横、竖、横折、横、横折、横、横、竖钩' },
+  { hanzi:'沉', pinyin:'chén', totalStrokes:7, strokeOrder:'点、点、提、点、横钩、撇、横折弯钩' },
+  { hanzi:'发', pinyin:'fà', totalStrokes:5, strokeOrder:'撇折、撇、横撇、捺、点' },
+  { hanzi:'窗', pinyin:'chuāng', totalStrokes:12, strokeOrder:'点、点、横撇、撇、竖、横折、撇、横撇、点、横、竖、横' },
+  // 课文8 古诗二首
+  { hanzi:'依', pinyin:'yī', totalStrokes:8, strokeOrder:'撇、竖、点、横、撇、竖提、撇、捺' },
+  { hanzi:'尽', pinyin:'jìn', totalStrokes:6, strokeOrder:'横折、横、撇、捺、点、点' },
+  { hanzi:'黄', pinyin:'huáng', totalStrokes:11, strokeOrder:'横、竖、竖、横、竖、横折、横、竖、横、撇、点' },
+  { hanzi:'层', pinyin:'céng', totalStrokes:7, strokeOrder:'横折、横、撇、横、横、撇折、点' },
+  { hanzi:'照', pinyin:'zhào', totalStrokes:13, strokeOrder:'竖、横折、横、横、竖钩、撇、点、点、撇、撇、捺、点、点' },
+  { hanzi:'炉', pinyin:'lú', totalStrokes:8, strokeOrder:'点、撇、撇、点、点、横折、横、撇' },
+  { hanzi:'烟', pinyin:'yān', totalStrokes:10, strokeOrder:'点、撇、撇、点、竖、横折、横、竖、横、横' },
+  { hanzi:'挂', pinyin:'guà', totalStrokes:9, strokeOrder:'横、竖钩、提、横、竖、横、横、竖、横' },
+  { hanzi:'川', pinyin:'chuān', totalStrokes:3, strokeOrder:'撇、竖、竖' },
+  // 课文9 黄山奇石
+  { hanzi:'南', pinyin:'nán', totalStrokes:9, strokeOrder:'横、竖、竖、横折钩、点、撇、横、横、竖' },
+  { hanzi:'部', pinyin:'bù', totalStrokes:10, strokeOrder:'点、横、点、撇、横、竖、横折、横、横撇弯钩、竖' },
+  { hanzi:'些', pinyin:'xiē', totalStrokes:8, strokeOrder:'竖、横、竖、提、撇、竖弯钩、横、横' },
+  { hanzi:'巨', pinyin:'jù', totalStrokes:4, strokeOrder:'横、横折、横、竖折' },
+  { hanzi:'真', pinyin:'zhēn', totalStrokes:10, strokeOrder:'横、撇、竖、横折、横、横、横、横、撇、点' },
+  { hanzi:'位', pinyin:'wèi', totalStrokes:7, strokeOrder:'撇、竖、点、横、点、撇、横' },
+  { hanzi:'每', pinyin:'měi', totalStrokes:7, strokeOrder:'撇、横、竖折、横折钩、点、横、点' },
+  { hanzi:'升', pinyin:'shēng', totalStrokes:4, strokeOrder:'撇、横、撇、竖' },
+  { hanzi:'闪', pinyin:'shǎn', totalStrokes:5, strokeOrder:'点、竖、横折钩、撇、点' },
+  { hanzi:'狗', pinyin:'gǒu', totalStrokes:8, strokeOrder:'撇、弯钩、撇、撇、横折钩、竖、横折、横' },
+  // 课文10 日月潭
+  { hanzi:'名', pinyin:'míng', totalStrokes:6, strokeOrder:'撇、横撇、点、竖、横折、横' },
+  { hanzi:'胜', pinyin:'shèng', totalStrokes:9, strokeOrder:'撇、横折钩、横、横、撇、横、横、竖、横' },
+  { hanzi:'迹', pinyin:'jì', totalStrokes:9, strokeOrder:'点、横、撇、竖钩、撇、点、点、横折折撇、捺' },
+  { hanzi:'央', pinyin:'yāng', totalStrokes:5, strokeOrder:'竖、横折、横、撇、捺' },
+  { hanzi:'丽', pinyin:'lì', totalStrokes:7, strokeOrder:'横、竖、横折钩、点、竖、横折钩、点' },
+  { hanzi:'展', pinyin:'zhǎn', totalStrokes:10, strokeOrder:'横折、横、撇、横、竖、竖、横、竖提、撇、捺' },
+  { hanzi:'现', pinyin:'xiàn', totalStrokes:8, strokeOrder:'横、横、竖、提、竖、横折、撇、竖弯钩' },
+  { hanzi:'湾', pinyin:'wān', totalStrokes:12, strokeOrder:'点、点、提、点、横、横、横、竖、竖、横折、横、竖折折钩' },
+  { hanzi:'客', pinyin:'kè', totalStrokes:9, strokeOrder:'点、点、横撇、撇、横撇、捺、竖、横折、横' },
+  // 课文11 葡萄沟
+  { hanzi:'份', pinyin:'fèn', totalStrokes:6, strokeOrder:'撇、竖、撇、捺、横折钩、撇' },
+  { hanzi:'坡', pinyin:'pō', totalStrokes:8, strokeOrder:'横、竖、提、横撇、撇、竖、横撇、捺' },
+  { hanzi:'枝', pinyin:'zhī', totalStrokes:8, strokeOrder:'横、竖、撇、点、横、竖、横撇、捺' },
+  { hanzi:'起', pinyin:'qǐ', totalStrokes:10, strokeOrder:'横、竖、横、竖、横、撇、捺、横折、横、竖弯钩' },
+  { hanzi:'客', pinyin:'kè', totalStrokes:9, strokeOrder:'点、点、横撇、撇、横撇、捺、竖、横折、横' },
+  { hanzi:'老', pinyin:'lǎo', totalStrokes:6, strokeOrder:'横、竖、横、撇、撇、竖弯钩' },
+  { hanzi:'收', pinyin:'shōu', totalStrokes:6, strokeOrder:'竖提、竖、撇、横、撇、捺' },
+  { hanzi:'城', pinyin:'chéng', totalStrokes:9, strokeOrder:'横、竖、提、横、撇、横折钩、斜钩、撇、点' },
+  { hanzi:'市', pinyin:'shì', totalStrokes:5, strokeOrder:'点、横、竖、横折钩、竖' },
+  { hanzi:'利', pinyin:'lì', totalStrokes:7, strokeOrder:'撇、横、竖、撇、点、竖、竖钩' },
+  { hanzi:'干', pinyin:'gān', totalStrokes:3, strokeOrder:'横、横、竖' },
+  { hanzi:'留', pinyin:'liú', totalStrokes:10, strokeOrder:'撇、竖提、点、横折钩、撇、竖、横折、横、竖、横' },
+  // 课文12 坐井观天
+  { hanzi:'井', pinyin:'jǐng', totalStrokes:4, strokeOrder:'横、横、撇、竖' },
+  { hanzi:'观', pinyin:'guān', totalStrokes:6, strokeOrder:'横撇、点、竖、横折、撇、竖弯钩' },
+  { hanzi:'沿', pinyin:'yán', totalStrokes:8, strokeOrder:'点、点、提、撇、横折折、竖、横折、横' },
+  { hanzi:'答', pinyin:'dá', totalStrokes:12, strokeOrder:'撇、横、点、撇、横、点、撇、捺、竖、横折、横' },
+  { hanzi:'渴', pinyin:'kě', totalStrokes:12, strokeOrder:'点、点、提、竖、横折、横、横、撇、横折钩、撇、点、竖折' },
+  { hanzi:'喝', pinyin:'hē', totalStrokes:12, strokeOrder:'竖、横折、横、竖、横折、横、横、撇、横折钩、撇、点、竖折' },
+  { hanzi:'话', pinyin:'huà', totalStrokes:8, strokeOrder:'点、横折提、撇、横、竖、竖、横折、横' },
+  { hanzi:'际', pinyin:'jì', totalStrokes:7, strokeOrder:'横折折折钩、竖、横、横、竖钩、撇、点' },
+  // 课文13 寒号鸟
+  { hanzi:'面', pinyin:'miàn', totalStrokes:9, strokeOrder:'横、撇、竖、横折、竖、竖、横、横、横' },
+  { hanzi:'阵', pinyin:'zhèn', totalStrokes:6, strokeOrder:'横折折折钩、竖、横、撇折、横、竖' },
+  { hanzi:'朗', pinyin:'lǎng', totalStrokes:10, strokeOrder:'点、横折、横、横、竖提、撇、横折钩、横、横' },
+  { hanzi:'枯', pinyin:'kū', totalStrokes:9, strokeOrder:'横、竖、撇、点、横、竖、竖、横折、横' },
+  { hanzi:'却', pinyin:'què', totalStrokes:7, strokeOrder:'横、竖、横、撇折、点、横折折折钩、竖' },
+  { hanzi:'将', pinyin:'jiāng', totalStrokes:9, strokeOrder:'点、提、竖、撇、横撇、点、横、竖钩、点' },
+  { hanzi:'纷', pinyin:'fēn', totalStrokes:7, strokeOrder:'撇折、撇折、提、撇、捺、横折钩、撇' },
+  { hanzi:'夜', pinyin:'yè', totalStrokes:8, strokeOrder:'点、横、撇、竖、撇、横撇、点、捺' },
+  // 课文14 我要的是葫芦
+  { hanzi:'棵', pinyin:'kē', totalStrokes:12, strokeOrder:'横、竖、撇、点、竖、横折、横、横、横、竖、撇、捺' },
+  { hanzi:'谢', pinyin:'xiè', totalStrokes:12, strokeOrder:'点、横折提、撇、竖、横折钩、横、横、横、竖钩、撇、点、点' },
+  { hanzi:'想', pinyin:'xiǎng', totalStrokes:13, strokeOrder:'横、竖、撇、点、竖、横折、横、横、横、点、卧钩、点、点' },
+  { hanzi:'盯', pinyin:'dīng', totalStrokes:7, strokeOrder:'竖、横折、横、横、横、横、竖钩' },
+  { hanzi:'言', pinyin:'yán', totalStrokes:7, strokeOrder:'点、横、横、横、竖、横折、横' },
+  { hanzi:'邻', pinyin:'lín', totalStrokes:7, strokeOrder:'撇、点、点、横撇、点、横折折折钩、竖' },
+  { hanzi:'治', pinyin:'zhì', totalStrokes:8, strokeOrder:'点、点、提、撇折、点、竖、横折、横' },
+  { hanzi:'怪', pinyin:'guài', totalStrokes:8, strokeOrder:'点、点、竖、横撇、捺、横、竖、横' },
+  // 课文15 大禹治水
+  { hanzi:'洪', pinyin:'hóng', totalStrokes:9, strokeOrder:'点、点、提、横、竖、竖、横、撇、捺' },
+  { hanzi:'灾', pinyin:'zāi', totalStrokes:7, strokeOrder:'点、点、横撇、点、撇、撇、捺' },
+  { hanzi:'难', pinyin:'nàn', totalStrokes:10, strokeOrder:'横撇、点、撇、竖、点、横、横、横、竖、横' },
+  { hanzi:'道', pinyin:'dào', totalStrokes:12, strokeOrder:'点、撇、横、撇、竖、横折、横、横、横、点、横折折撇、捺' },
+  { hanzi:'认', pinyin:'rèn', totalStrokes:4, strokeOrder:'点、横折提、撇、捺' },
+  { hanzi:'被', pinyin:'bèi', totalStrokes:10, strokeOrder:'点、横撇、竖、撇、点、横撇、撇、竖、横撇、捺' },
+  { hanzi:'业', pinyin:'yè', totalStrokes:5, strokeOrder:'竖、竖、点、撇、横' },
+  { hanzi:'产', pinyin:'chǎn', totalStrokes:6, strokeOrder:'点、横、点、撇、横、撇' },
+  // 课文16 朱德的扁担
+  { hanzi:'扁', pinyin:'biǎn', totalStrokes:9, strokeOrder:'点、横折、横、撇、竖、横折钩、横、竖、竖' },
+  { hanzi:'担', pinyin:'dàn', totalStrokes:8, strokeOrder:'横、竖钩、提、竖、横折、横、横、横' },
+  { hanzi:'志', pinyin:'zhì', totalStrokes:7, strokeOrder:'横、竖、横、点、卧钩、点、点' },
+  { hanzi:'伍', pinyin:'wǔ', totalStrokes:6, strokeOrder:'撇、竖、横、竖、横折、横' },
+  { hanzi:'师', pinyin:'shī', totalStrokes:6, strokeOrder:'竖、撇、横、竖、横折钩、竖' },
+  { hanzi:'军', pinyin:'jūn', totalStrokes:6, strokeOrder:'点、横钩、横、撇折、横、竖' },
+  { hanzi:'战', pinyin:'zhàn', totalStrokes:9, strokeOrder:'竖、横、竖、横折、横、斜钩、撇、点' },
+  { hanzi:'士', pinyin:'shì', totalStrokes:3, strokeOrder:'横、竖、横' },
+  { hanzi:'带', pinyin:'dài', totalStrokes:9, strokeOrder:'横、竖、竖、横、点、横钩、竖、横折钩、竖' },
+  { hanzi:'领', pinyin:'lǐng', totalStrokes:11, strokeOrder:'撇、捺、点、横撇、点、横、撇、竖、横折、撇、点' },
+  { hanzi:'来', pinyin:'lái', totalStrokes:7, strokeOrder:'横、点、撇、横、竖、撇、捺' },
+  { hanzi:'回', pinyin:'huí', totalStrokes:6, strokeOrder:'竖、横折、竖、横折、横、横' },
+  { hanzi:'白', pinyin:'bái', totalStrokes:5, strokeOrder:'撇、竖、横折、横、横' },
+  { hanzi:'天', pinyin:'tiān', totalStrokes:4, strokeOrder:'横、横、撇、捺' },
+  { hanzi:'起', pinyin:'qǐ', totalStrokes:10, strokeOrder:'横、竖、横、竖、横、撇、捺、横折、横、竖弯钩' },
+  // 课文17 难忘的泼水节
+  { hanzi:'忘', pinyin:'wàng', totalStrokes:7, strokeOrder:'点、横、竖折、点、卧钩、点、点' },
+  { hanzi:'泼', pinyin:'pō', totalStrokes:8, strokeOrder:'点、点、提、撇、横撇、撇、竖、横撇、捺' },
+  { hanzi:'度', pinyin:'dù', totalStrokes:9, strokeOrder:'点、横、撇、横、竖、竖、横、横撇、捺' },
+  { hanzi:'龙', pinyin:'lóng', totalStrokes:5, strokeOrder:'横、撇、竖弯钩、撇、点' },
+  { hanzi:'炮', pinyin:'pào', totalStrokes:9, strokeOrder:'点、撇、撇、点、撇、横折钩、横折、横、竖弯钩' },
+  { hanzi:'穿', pinyin:'chuān', totalStrokes:9, strokeOrder:'点、点、横撇、撇、竖钩、横、竖折、竖、撇' },
+  { hanzi:'始', pinyin:'shǐ', totalStrokes:8, strokeOrder:'撇点、撇、横、撇折、点、竖、横折、横' },
+  { hanzi:'令', pinyin:'lìng', totalStrokes:5, strokeOrder:'撇、捺、点、横撇、点' },
+  // 课文18 古诗二首
+  { hanzi:'绝', pinyin:'jué', totalStrokes:9, strokeOrder:'撇折、撇折、提、撇、横撇、竖弯钩、横折、横、竖弯钩' },
+  { hanzi:'灭', pinyin:'miè', totalStrokes:5, strokeOrder:'横、点、撇、撇、捺' },
+  { hanzi:'舟', pinyin:'zhōu', totalStrokes:6, strokeOrder:'撇、撇、横折钩、点、横、点' },
+  { hanzi:'独', pinyin:'dú', totalStrokes:9, strokeOrder:'撇、弯钩、撇、竖、横折、横、竖、横、点' },
+  { hanzi:'阴', pinyin:'yīn', totalStrokes:6, strokeOrder:'横折折折钩、竖、撇、横折钩、横、横' },
+  { hanzi:'似', pinyin:'sì', totalStrokes:6, strokeOrder:'撇、竖、点、撇折、点、撇、点' },
+  { hanzi:'野', pinyin:'yě', totalStrokes:11, strokeOrder:'竖、横折、横、横、竖、横、提、横撇、点、横撇、捺' },
+  { hanzi:'低', pinyin:'dī', totalStrokes:7, strokeOrder:'撇、竖、撇、竖提、横、斜钩、点' },
+  // 课文19 雾在哪里
+  { hanzi:'于', pinyin:'yú', totalStrokes:3, strokeOrder:'横、横、竖钩' },
+  { hanzi:'论', pinyin:'lùn', totalStrokes:6, strokeOrder:'点、横折提、撇、捺、撇、竖弯钩' },
+  { hanzi:'岸', pinyin:'àn', totalStrokes:8, strokeOrder:'竖、竖折、竖、横、撇、横、横、竖' },
+  { hanzi:'屋', pinyin:'wū', totalStrokes:9, strokeOrder:'横折、横、撇、横、撇折、点、横、竖、横' },
+  { hanzi:'切', pinyin:'qiè', totalStrokes:4, strokeOrder:'横、竖提、横折钩、撇' },
+  { hanzi:'久', pinyin:'jiǔ', totalStrokes:3, strokeOrder:'撇、横撇、捺' },
+  { hanzi:'散', pinyin:'sàn', totalStrokes:12, strokeOrder:'横、竖、竖、横、竖、横折钩、横、横、撇、横、撇、捺' },
+  { hanzi:'步', pinyin:'bù', totalStrokes:7, strokeOrder:'竖、横、竖、横、竖、撇、撇' },
+  { hanzi:'失', pinyin:'shī', totalStrokes:5, strokeOrder:'撇、横、横、撇、捺' },
+  // 课文20 雪孩子
+  { hanzi:'唱', pinyin:'chàng', totalStrokes:11, strokeOrder:'竖、横折、横、竖、横折、横、横、竖、横折、横、横' },
+  { hanzi:'赶', pinyin:'gǎn', totalStrokes:10, strokeOrder:'横、竖、横、竖、横、撇、捺、横、横、竖' },
+  { hanzi:'旺', pinyin:'wàng', totalStrokes:8, strokeOrder:'竖、横折、横、横、横、横、竖、横' },
+  { hanzi:'旁', pinyin:'páng', totalStrokes:10, strokeOrder:'点、横、点、撇、点、横钩、点、横、横折钩、撇' },
+  { hanzi:'浑', pinyin:'hún', totalStrokes:9, strokeOrder:'点、点、提、点、横钩、横、撇折、横、竖' },
+  { hanzi:'谁', pinyin:'shuí', totalStrokes:10, strokeOrder:'点、横折提、撇、竖、点、横、横、横、竖、横' },
+  { hanzi:'轻', pinyin:'qīng', totalStrokes:9, strokeOrder:'横、竖、撇、点、横撇、点、横、竖、横' },
+  { hanzi:'汽', pinyin:'qì', totalStrokes:7, strokeOrder:'点、点、提、撇、横、横、横折弯钩' },
+  // 课文21 狐假虎威
+  { hanzi:'食', pinyin:'shí', totalStrokes:9, strokeOrder:'撇、捺、点、横折、横、横、竖提、撇、点' },
+  { hanzi:'物', pinyin:'wù', totalStrokes:8, strokeOrder:'撇、横、竖、提、撇、横折钩、撇、撇' },
+  { hanzi:'眼', pinyin:'yǎn', totalStrokes:11, strokeOrder:'竖、横折、横、横、横、撇、横折、横、横、竖提、捺' },
+  { hanzi:'爷', pinyin:'yé', totalStrokes:6, strokeOrder:'撇、点、撇、捺、横折钩、竖' },
+  { hanzi:'爪', pinyin:'zhuǎ', totalStrokes:4, strokeOrder:'撇、撇、竖、捺' },
+  { hanzi:'神', pinyin:'shén', totalStrokes:9, strokeOrder:'点、横撇、竖、点、竖、横折、横、横、竖' },
+  { hanzi:'活', pinyin:'huó', totalStrokes:9, strokeOrder:'点、点、提、撇、横、竖、竖、横折、横' },
+  { hanzi:'猪', pinyin:'zhū', totalStrokes:11, strokeOrder:'撇、弯钩、撇、横、竖、横、撇、竖、横折、横、横' },
+  // 课文22 狐狸分奶酪
+  { hanzi:'奶', pinyin:'nǎi', totalStrokes:5, strokeOrder:'撇点、撇、横、横折折折钩、撇' },
+  { hanzi:'始', pinyin:'shǐ', totalStrokes:8, strokeOrder:'撇点、撇、横、撇折、点、竖、横折、横' },
+  { hanzi:'吵', pinyin:'chǎo', totalStrokes:7, strokeOrder:'竖、横折、横、竖、撇、点、撇' },
+  { hanzi:'仔', pinyin:'zǐ', totalStrokes:5, strokeOrder:'撇、竖、横撇、竖钩、横' },
+  { hanzi:'急', pinyin:'jí', totalStrokes:9, strokeOrder:'撇、横撇、横折、横、横、点、卧钩、点、点' },
+  { hanzi:'咬', pinyin:'yǎo', totalStrokes:9, strokeOrder:'竖、横折、横、点、横、撇、点、撇、捺' },
+  { hanzi:'第', pinyin:'dì', totalStrokes:11, strokeOrder:'撇、横、点、撇、横、点、横折、横、竖折折钩、竖、撇' },
+  { hanzi:'公', pinyin:'gōng', totalStrokes:4, strokeOrder:'撇、捺、撇折、点' },
+  // 课文23 纸船和风筝
+  { hanzi:'纸', pinyin:'zhǐ', totalStrokes:7, strokeOrder:'撇折、撇折、提、撇、竖提、横、斜钩' },
+  { hanzi:'抓', pinyin:'zhuā', totalStrokes:7, strokeOrder:'横、竖钩、提、撇、撇、竖、捺' },
+  { hanzi:'线', pinyin:'xiàn', totalStrokes:8, strokeOrder:'撇折、撇折、提、横、横、斜钩、撇、点' },
+  { hanzi:'吵', pinyin:'chǎo', totalStrokes:7, strokeOrder:'竖、横折、横、竖、撇、点、撇' },
+  { hanzi:'但', pinyin:'dàn', totalStrokes:7, strokeOrder:'撇、竖、竖、横折、横、横、横' },
+  { hanzi:'受', pinyin:'shòu', totalStrokes:8, strokeOrder:'撇、点、点、撇、点、横撇、横撇、捺' },
+  { hanzi:'句', pinyin:'jù', totalStrokes:5, strokeOrder:'撇、横折钩、竖、横折、横' },
+  { hanzi:'哭', pinyin:'kū', totalStrokes:10, strokeOrder:'竖、横折、横、竖、横折、横、横、撇、捺、点' },
+  // 课文24 风娃娃
+  { hanzi:'车', pinyin:'chē', totalStrokes:4, strokeOrder:'横、撇折、横、竖' },
+  { hanzi:'得', pinyin:'de', totalStrokes:11, strokeOrder:'撇、撇、竖、竖、横折、横、横、横、横、竖钩、点' },
+  { hanzi:'秧', pinyin:'yāng', totalStrokes:10, strokeOrder:'撇、横、竖、撇、点、竖、横折、横、撇、捺' },
+  { hanzi:'苗', pinyin:'miáo', totalStrokes:8, strokeOrder:'横、竖、竖、竖、横折、横、竖、横' },
+  { hanzi:'汗', pinyin:'hàn', totalStrokes:6, strokeOrder:'点、点、提、横、横、竖' },
+  { hanzi:'场', pinyin:'chǎng', totalStrokes:6, strokeOrder:'横、竖、提、横折折折钩、撇、撇' },
+  { hanzi:'伤', pinyin:'shāng', totalStrokes:6, strokeOrder:'撇、竖、撇、横、横折钩、撇' },
+  { hanzi:'路', pinyin:'lù', totalStrokes:13, strokeOrder:'竖、横折、横、竖、横、竖、提、撇、横撇、捺、竖、横折、横' }
+]},
+  s4: { name:'二年级下册', icon:'🍇', color:'s4', core: [
+  // ===== 阅读1 古诗二首 =====
+  { hanzi:'诗', pinyin:'shī', totalStrokes:8, strokeOrder:'点、横折提、横、竖、横、横、竖钩、点' },
+  { hanzi:'童', pinyin:'tóng', totalStrokes:12, strokeOrder:'点、横、点、撇、横、竖、横折、横、横、竖、横、横' },
+  { hanzi:'碧', pinyin:'bì', totalStrokes:14, strokeOrder:'横、横、竖、提、撇、竖、横折、横、横、横、撇、竖、横折、横' },
+  { hanzi:'妆', pinyin:'zhuāng', totalStrokes:6, strokeOrder:'点、提、竖、撇点、撇、横' },
+  { hanzi:'绿', pinyin:'lǜ', totalStrokes:11, strokeOrder:'撇折、撇折、提、横折、横、横、竖钩、点、提、撇、捺' },
+  { hanzi:'丝', pinyin:'sī', totalStrokes:5, strokeOrder:'撇折、撇折、撇折、撇折、横' },
+  { hanzi:'剪', pinyin:'jiǎn', totalStrokes:11, strokeOrder:'点、撇、横、竖、横折钩、横、横、竖、竖钩、横折钩、撇' },
+  // ===== 阅读2 找春天 =====
+  { hanzi:'冲', pinyin:'chōng', totalStrokes:6, strokeOrder:'点、提、竖、横折、横、竖' },
+  { hanzi:'寻', pinyin:'xún', totalStrokes:6, strokeOrder:'横折、横、横、横、竖钩、点' },
+  { hanzi:'姑', pinyin:'gū', totalStrokes:8, strokeOrder:'撇点、撇、横、横、竖、竖、横折、横' },
+  { hanzi:'娘', pinyin:'niáng', totalStrokes:10, strokeOrder:'撇点、撇、横、点、横折、横、横、竖提、撇、捺' },
+  { hanzi:'吐', pinyin:'tǔ', totalStrokes:6, strokeOrder:'竖、横折、横、横、竖、横' },
+  { hanzi:'柳', pinyin:'liǔ', totalStrokes:9, strokeOrder:'横、竖、撇、点、撇、竖提、撇、横折钩、竖' },
+  { hanzi:'荡', pinyin:'dàng', totalStrokes:9, strokeOrder:'横、竖、竖、点、点、提、横折折折钩、撇、撇' },
+  { hanzi:'桃', pinyin:'táo', totalStrokes:10, strokeOrder:'横、竖、撇、点、撇、点、提、竖弯钩、撇、点' },
+  { hanzi:'杏', pinyin:'xìng', totalStrokes:7, strokeOrder:'横、竖、撇、捺、竖、横折、横' },
+  // ===== 阅读3 开满鲜花的小路 =====
+  { hanzi:'鲜', pinyin:'xiān', totalStrokes:14, strokeOrder:'撇、横撇、竖、横折、横、竖、横、提、点、撇、横、横、横、竖' },
+  { hanzi:'邮', pinyin:'yóu', totalStrokes:7, strokeOrder:'竖、横折、横、竖、横、横折折折钩、竖' },
+  { hanzi:'递', pinyin:'dì', totalStrokes:10, strokeOrder:'点、撇、横折折撇、捺、点、撇、竖、横折钩、竖、撇' },
+  { hanzi:'员', pinyin:'yuán', totalStrokes:7, strokeOrder:'竖、横折、横、竖、横折、撇、点' },
+  { hanzi:'原', pinyin:'yuán', totalStrokes:10, strokeOrder:'横、撇、撇、竖、横折、横、横、竖钩、撇、点' },
+  { hanzi:'叔', pinyin:'shū', totalStrokes:8, strokeOrder:'竖、横、横、竖、横、撇、横撇、捺' },
+  { hanzi:'局', pinyin:'jú', totalStrokes:7, strokeOrder:'横折、横、撇、横折钩、竖、横折、横' },
+  { hanzi:'堆', pinyin:'duī', totalStrokes:11, strokeOrder:'横、竖、提、撇、竖、点、横、横、横、竖、横' },
+  { hanzi:'礼', pinyin:'lǐ', totalStrokes:5, strokeOrder:'点、横撇、竖、点、竖弯钩' },
+  // ===== 阅读4 邓小平爷爷植树 =====
+  { hanzi:'邓', pinyin:'dèng', totalStrokes:4, strokeOrder:'横撇、点、横折折折钩、竖' },
+  { hanzi:'植', pinyin:'zhí', totalStrokes:12, strokeOrder:'横、竖、撇、点、横、竖、竖、横折、横、横、横、横' },
+  { hanzi:'格', pinyin:'gé', totalStrokes:10, strokeOrder:'横、竖、撇、点、撇、横撇、捺、竖、横折、横' },
+  { hanzi:'引', pinyin:'yǐn', totalStrokes:4, strokeOrder:'横折、横、竖折折钩、竖' },
+  { hanzi:'注', pinyin:'zhù', totalStrokes:8, strokeOrder:'点、点、提、点、横、横、竖、横' },
+  { hanzi:'满', pinyin:'mǎn', totalStrokes:13, strokeOrder:'点、点、提、横、竖、竖、横、竖、横折钩、竖、横折、横、横' },
+  { hanzi:'休', pinyin:'xiū', totalStrokes:6, strokeOrder:'撇、竖、横、竖、撇、捺' },
+  { hanzi:'息', pinyin:'xī', totalStrokes:10, strokeOrder:'撇、竖、横折、横、横、横、点、卧钩、点、点' },
+  // ===== 阅读5 雷锋叔叔，你在哪里 =====
+  { hanzi:'锋', pinyin:'fēng', totalStrokes:12, strokeOrder:'撇、横、横、横、竖提、撇、横撇、捺、横、横、横、竖' },
+  { hanzi:'昨', pinyin:'zuó', totalStrokes:9, strokeOrder:'竖、横折、横、横、撇、横、竖、横、横' },
+  { hanzi:'冒', pinyin:'mào', totalStrokes:9, strokeOrder:'竖、横折、横、横、竖、横折、横、横、横' },
+  { hanzi:'留', pinyin:'liú', totalStrokes:10, strokeOrder:'撇、竖提、点、横折钩、撇、竖、横折、横、竖、横' },
+  { hanzi:'弯', pinyin:'wān', totalStrokes:9, strokeOrder:'点、横、竖、竖、撇、点、横折、横、竖折折钩' },
+  { hanzi:'背', pinyin:'bēi', totalStrokes:9, strokeOrder:'竖、横、提、撇、竖弯钩、竖、横折钩、横、横' },
+  { hanzi:'洒', pinyin:'sǎ', totalStrokes:9, strokeOrder:'点、点、提、横、竖、横折、撇、竖弯、横' },
+  { hanzi:'温', pinyin:'wēn', totalStrokes:12, strokeOrder:'点、点、提、竖、横折、横、横、竖、横折、竖、竖、横' },
+  { hanzi:'暖', pinyin:'nuǎn', totalStrokes:13, strokeOrder:'竖、横折、横、横、撇、点、点、撇、横、横、撇、横撇、捺' },
+  // ===== 阅读6 千人糕 =====
+  { hanzi:'桌', pinyin:'zhuō', totalStrokes:10, strokeOrder:'竖、横、横折、横、横、横、竖、撇、捺、横' },  // 来源明确
+  { hanzi:'尝', pinyin:'cháng', totalStrokes:9, strokeOrder:'竖、点、撇、点、横撇、横、横、撇折、点' },  // 来源明确
+  { hanzi:'买', pinyin:'mǎi', totalStrokes:6, strokeOrder:'横撇、点、竖、横折、撇、点' },  // 来源明确
+  { hanzi:'具', pinyin:'jù', totalStrokes:8, strokeOrder:'竖、横折、横、横、横、横、撇、点' },  // 来源明确
+  { hanzi:'甘', pinyin:'gān', totalStrokes:5, strokeOrder:'横、竖、竖、横、横' },  // 来源明确
+  { hanzi:'汁', pinyin:'zhī', totalStrokes:5, strokeOrder:'点、点、提、横、竖' },  // 来源明确
+  { hanzi:'甜', pinyin:'tián', totalStrokes:11, strokeOrder:'撇、横、竖、竖、横、横、竖、竖、横、横、横' },  // 来源明确
+  // ===== 识字1 神州谣 =====
+  { hanzi:'州', pinyin:'zhōu', totalStrokes:6, strokeOrder:'点、撇、点、竖、点、竖' },
+  { hanzi:'华', pinyin:'huá', totalStrokes:6, strokeOrder:'撇、竖、撇、竖弯钩、横、竖' },
+  { hanzi:'岛', pinyin:'dǎo', totalStrokes:7, strokeOrder:'撇、横折钩、点、竖折折钩、竖、竖折、竖' },
+  { hanzi:'峡', pinyin:'xiá', totalStrokes:9, strokeOrder:'竖、竖折、竖、横、点、撇、横、撇、捺' },
+  { hanzi:'族', pinyin:'zú', totalStrokes:11, strokeOrder:'点、横、横折钩、撇、撇、横、横、撇、横、横、撇、捺' },
+  { hanzi:'谊', pinyin:'yì', totalStrokes:10, strokeOrder:'点、横折提、点、点、横钩、竖、横折、横、横、横' },
+  { hanzi:'齐', pinyin:'qí', totalStrokes:6, strokeOrder:'点、横、撇、捺、撇、竖' },
+  { hanzi:'奋', pinyin:'fèn', totalStrokes:8, strokeOrder:'横、撇、捺、竖、横折、横、竖、横' },
+  // ===== 识字2 传统节日 =====
+  { hanzi:'传', pinyin:'chuán', totalStrokes:6, strokeOrder:'撇、竖、横、横、撇折、点' },
+  { hanzi:'统', pinyin:'tǒng', totalStrokes:9, strokeOrder:'撇折、撇折、提、点、横、撇折、点、撇、竖弯钩' },
+  { hanzi:'贴', pinyin:'tiē', totalStrokes:9, strokeOrder:'竖、横折、撇、点、竖、横、竖、横折、横' },
+  { hanzi:'街', pinyin:'jiē', totalStrokes:12, strokeOrder:'撇、撇、竖、横、竖、横、横、竖、横、横、竖钩、点' },
+  { hanzi:'舟', pinyin:'zhōu', totalStrokes:6, strokeOrder:'撇、撇、横折钩、点、横、点' },
+  { hanzi:'艾', pinyin:'ài', totalStrokes:5, strokeOrder:'横、竖、竖、撇、捺' },
+  { hanzi:'敬', pinyin:'jìng', totalStrokes:12, strokeOrder:'横、竖、竖、撇、横折钩、竖、横折、横、撇、横、撇、捺' },
+  { hanzi:'转', pinyin:'zhuǎn', totalStrokes:8, strokeOrder:'横、撇折、竖、提、横、横、竖折撇、点' },
+  { hanzi:'团', pinyin:'tuán', totalStrokes:6, strokeOrder:'竖、横折、横、竖钩、撇、横' },
+  { hanzi:'闹', pinyin:'nào', totalStrokes:8, strokeOrder:'点、竖、横折钩、点、横、竖、横折钩、竖' },
+  // ===== 识字3 “贝”的故事 =====
+  { hanzi:'贝', pinyin:'bèi', totalStrokes:4, strokeOrder:'竖、横折、撇、点' },
+  { hanzi:'壳', pinyin:'ké', totalStrokes:7, strokeOrder:'横、竖、横、点、横钩、撇、横折弯钩' },
+  { hanzi:'甲', pinyin:'jiǎ', totalStrokes:5, strokeOrder:'竖、横折、横、横、竖' },
+  { hanzi:'骨', pinyin:'gǔ', totalStrokes:9, strokeOrder:'竖、横折、横折、点、横钩、竖、横折钩、横、横' },
+  { hanzi:'钱', pinyin:'qián', totalStrokes:10, strokeOrder:'撇、横、横、横、竖提、横、横、斜钩、撇、点' },
+  { hanzi:'币', pinyin:'bì', totalStrokes:4, strokeOrder:'撇、竖、横折钩、竖' },
+  { hanzi:'与', pinyin:'yǔ', totalStrokes:3, strokeOrder:'横、竖折折钩、横' },
+  { hanzi:'关', pinyin:'guān', totalStrokes:6, strokeOrder:'点、撇、横、横、撇、捺' },
+  // ===== 识字4 中国美食 =====
+  { hanzi:'烧', pinyin:'shāo', totalStrokes:10, strokeOrder:'点、撇、撇、点、横、斜钩、撇、横、撇、竖弯钩' },
+  { hanzi:'茄', pinyin:'qié', totalStrokes:8, strokeOrder:'横、竖、竖、横折钩、撇、竖、横折、横' },
+  { hanzi:'烤', pinyin:'kǎo', totalStrokes:10, strokeOrder:'点、撇、撇、点、横、竖、横、撇、横、竖折折钩' },
+  { hanzi:'鸭', pinyin:'yā', totalStrokes:10, strokeOrder:'竖、横折、横、横、竖、撇、横折钩、点、竖折折钩、横' },
+  { hanzi:'肉', pinyin:'ròu', totalStrokes:6, strokeOrder:'竖、横折钩、撇、点、撇、点' },
+  { hanzi:'鸡', pinyin:'jī', totalStrokes:7, strokeOrder:'横撇、点、撇、横折钩、点、竖折折钩、横' },
+  { hanzi:'蛋', pinyin:'dàn', totalStrokes:11, strokeOrder:'横撇、竖、横、撇、捺、竖、横折、横、竖、横、点' },
+  { hanzi:'饭', pinyin:'fàn', totalStrokes:7, strokeOrder:'撇、横撇、竖提、撇、撇、横撇、捺' },
+  { hanzi:'米', pinyin:'mǐ', totalStrokes:6, strokeOrder:'点、撇、横、竖、撇、捺' },
+  { hanzi:'团', pinyin:'tuán', totalStrokes:6, strokeOrder:'竖、横折、横、竖钩、撇、横' },
+  // ===== 课文5 雷锋叔叔，你在哪里（课文版） =====
+  { hanzi:'锋', pinyin:'fēng', totalStrokes:12, strokeOrder:'撇、横、横、横、竖提、撇、横撇、捺、横、横、横、竖' },
+  { hanzi:'昨', pinyin:'zuó', totalStrokes:9, strokeOrder:'竖、横折、横、横、撇、横、竖、横、横' },
+  { hanzi:'冒', pinyin:'mào', totalStrokes:9, strokeOrder:'竖、横折、横、横、竖、横折、横、横、横' },
+  { hanzi:'留', pinyin:'liú', totalStrokes:10, strokeOrder:'撇、竖提、点、横折钩、撇、竖、横折、横、竖、横' },
+  { hanzi:'弯', pinyin:'wān', totalStrokes:9, strokeOrder:'点、横、竖、竖、撇、点、横折、横、竖折折钩' },
+  { hanzi:'背', pinyin:'bēi', totalStrokes:9, strokeOrder:'竖、横、提、撇、竖弯钩、竖、横折钩、横、横' },
+  { hanzi:'洒', pinyin:'sǎ', totalStrokes:9, strokeOrder:'点、点、提、横、竖、横折、撇、竖弯、横' },
+  { hanzi:'温', pinyin:'wēn', totalStrokes:12, strokeOrder:'点、点、提、竖、横折、横、横、竖、横折、竖、竖、横' },
+  { hanzi:'暖', pinyin:'nuǎn', totalStrokes:13, strokeOrder:'竖、横折、横、横、撇、点、点、撇、横、横、撇、横撇、捺' },
+  // ===== 课文6 千人糕（课文版） =====
+  { hanzi:'糕', pinyin:'gāo', totalStrokes:16, strokeOrder:'点、撇、横、竖、撇、点、点、撇、横、竖、横折、横、竖、横折、横、横' },
+  { hanzi:'特', pinyin:'tè', totalStrokes:10, strokeOrder:'撇、横、竖、提、横、竖、横、横、竖钩、点' },
+  { hanzi:'嘛', pinyin:'ma', totalStrokes:14, strokeOrder:'竖、横折、横、点、横、撇、横、竖、撇、点、横、竖、撇、捺' },
+  { hanzi:'买', pinyin:'mǎi', totalStrokes:6, strokeOrder:'横撇、点、竖、横折、撇、点' },
+  { hanzi:'粉', pinyin:'fěn', totalStrokes:10, strokeOrder:'点、撇、横、竖、撇、点、撇、捺、横折钩、撇' },
+  { hanzi:'糖', pinyin:'táng', totalStrokes:16, strokeOrder:'点、撇、横、竖、撇、点、点、横、撇、横折、横、横、竖、竖、横折、横' },
+  { hanzi:'甘', pinyin:'gān', totalStrokes:5, strokeOrder:'横、竖、竖、横、横' },
+  { hanzi:'汁', pinyin:'zhī', totalStrokes:5, strokeOrder:'点、点、提、横、竖' },
+  { hanzi:'甜', pinyin:'tián', totalStrokes:11, strokeOrder:'撇、横、竖、竖、横、横、竖、竖、横、横、横' },
+  { hanzi:'菜', pinyin:'cài', totalStrokes:11, strokeOrder:'横、竖、竖、撇、点、点、撇、横、竖、撇、捺' },
+  { hanzi:'劳', pinyin:'láo', totalStrokes:7, strokeOrder:'横、竖、竖、点、横钩、横折钩、撇' },
+  { hanzi:'应', pinyin:'yīng', totalStrokes:7, strokeOrder:'点、横、撇、点、点、撇、横' },
+  // ===== 课文7 一匹出色的马 =====
+  { hanzi:'匹', pinyin:'pǐ', totalStrokes:4, strokeOrder:'横、撇、竖弯钩、竖折' },
+  { hanzi:'妹', pinyin:'mèi', totalStrokes:8, strokeOrder:'撇点、撇、横、横、横、竖、撇、捺' },
+  { hanzi:'波', pinyin:'bō', totalStrokes:8, strokeOrder:'点、点、提、横钩、撇、竖、横撇、捺' },
+  { hanzi:'纹', pinyin:'wén', totalStrokes:7, strokeOrder:'撇折、撇折、提、点、横、撇、点' },
+  { hanzi:'像', pinyin:'xiàng', totalStrokes:13, strokeOrder:'撇、竖、撇、横撇、竖、横折、横、撇、弯钩、撇、撇、撇、捺' },
+  { hanzi:'景', pinyin:'jǐng', totalStrokes:12, strokeOrder:'竖、横折、横、横、点、横、竖、横折、横、竖钩、撇、点' },
+  { hanzi:'恋', pinyin:'liàn', totalStrokes:10, strokeOrder:'点、横、竖、竖、撇、点、点、卧钩、点、点' },
+  { hanzi:'舍', pinyin:'shě', totalStrokes:8, strokeOrder:'撇、捺、横、横、竖、竖、横折、横' },
+  { hanzi:'求', pinyin:'qiú', totalStrokes:7, strokeOrder:'横、竖钩、点、提、撇、捺、点' },
+  // ===== 课文8 彩色的梦 =====
+  { hanzi:'彩', pinyin:'cǎi', totalStrokes:11, strokeOrder:'撇、点、点、撇、横、竖、撇、点、撇、撇、撇' },
+  { hanzi:'梦', pinyin:'mèng', totalStrokes:11, strokeOrder:'横、竖、撇、点、横、竖、撇、点、撇、横撇、捺' },
+  { hanzi:'森', pinyin:'sēn', totalStrokes:12, strokeOrder:'横、竖、撇、点、横、竖、撇、点、横、竖、撇、捺' },
+  { hanzi:'拉', pinyin:'lā', totalStrokes:8, strokeOrder:'横、竖钩、提、点、横、点、撇、横' },
+  { hanzi:'结', pinyin:'jié', totalStrokes:9, strokeOrder:'撇折、撇折、提、横、竖、横、竖、横折、横' },
+  { hanzi:'苹', pinyin:'píng', totalStrokes:8, strokeOrder:'横、竖、竖、横、点、撇、横、竖' },
+  { hanzi:'般', pinyin:'bān', totalStrokes:10, strokeOrder:'撇、撇、横折钩、点、横、点、撇、横折折、横撇、捺' },
+  { hanzi:'精', pinyin:'jīng', totalStrokes:14, strokeOrder:'点、撇、横、竖、撇、点、横、横、竖、横、竖、横折钩、横、横' },
+  { hanzi:'灵', pinyin:'líng', totalStrokes:7, strokeOrder:'横折、横、横、点、撇、撇、捺' },
+  // ===== 课文9 枫树上的喜鹊 =====
+  { hanzi:'伞', pinyin:'sǎn', totalStrokes:6, strokeOrder:'撇、捺、撇、点、撇、竖' },
+  { hanzi:'姨', pinyin:'yí', totalStrokes:9, strokeOrder:'撇点、撇、横、横、竖折折钩、横、撇、捺' },
+  { hanzi:'弟', pinyin:'dì', totalStrokes:7, strokeOrder:'点、撇、横折、横、竖折折钩、竖、撇' },
+  { hanzi:'便', pinyin:'biàn', totalStrokes:9, strokeOrder:'撇、竖、横、竖、横折、横、横、撇、捺' },
+  { hanzi:'教', pinyin:'jiào', totalStrokes:11, strokeOrder:'横、竖、横、撇、横撇、竖钩、提、撇、横、撇、捺' },
+  { hanzi:'拼', pinyin:'pīn', totalStrokes:9, strokeOrder:'横、竖钩、提、点、撇、横、横、撇、竖' },
+  { hanzi:'音', pinyin:'yīn', totalStrokes:9, strokeOrder:'点、横、点、撇、横、竖、横折、横、横' },
+  { hanzi:'游', pinyin:'yóu', totalStrokes:12, strokeOrder:'点、点、提、点、横、撇折、撇、横撇、竖钩、横、横撇、捺' },
+  { hanzi:'戏', pinyin:'xì', totalStrokes:6, strokeOrder:'横撇、点、横、斜钩、撇、点' },
+  // ===== 课文10 沙滩上的童话 =====
+  { hanzi:'周', pinyin:'zhōu', totalStrokes:8, strokeOrder:'撇、横折钩、横、竖、横、竖、横折、横' },
+  { hanzi:'围', pinyin:'wéi', totalStrokes:7, strokeOrder:'竖、横折、横、横、横折钩、竖、横' },
+  { hanzi:'句', pinyin:'jù', totalStrokes:5, strokeOrder:'撇、横折钩、竖、横折、横' },
+  { hanzi:'补', pinyin:'bǔ', totalStrokes:7, strokeOrder:'点、横撇、竖、撇、点、横、竖钩' },
+  { hanzi:'充', pinyin:'chōng', totalStrokes:6, strokeOrder:'点、横、撇折、点、撇、竖弯钩' },
+  { hanzi:'药', pinyin:'yào', totalStrokes:9, strokeOrder:'横、竖、竖、撇折、撇折、提、撇、横折钩、点' },
+  { hanzi:'合', pinyin:'hé', totalStrokes:6, strokeOrder:'撇、捺、横、竖、横折、横' },
+  { hanzi:'死', pinyin:'sǐ', totalStrokes:6, strokeOrder:'横、撇、横撇、点、撇、竖弯钩' },
+  { hanzi:'记', pinyin:'jì', totalStrokes:5, strokeOrder:'点、横折提、横折、横、竖弯钩' },
+  // ===== 课文11 我是一只小虫子 =====
+  { hanzi:'屁', pinyin:'pì', totalStrokes:7, strokeOrder:'横折、横、撇、横、竖提、撇、横、竖弯钩' },
+  { hanzi:'股', pinyin:'gǔ', totalStrokes:8, strokeOrder:'撇、横折钩、横、横、撇、横折折、横撇、捺' },
+  { hanzi:'净', pinyin:'jìng', totalStrokes:8, strokeOrder:'点、提、撇、横撇、横折钩、横、横、竖' },
+  { hanzi:'屎', pinyin:'shǐ', totalStrokes:9, strokeOrder:'横折、横、撇、横、竖、撇、点、撇、捺' },
+  { hanzi:'幸', pinyin:'xìng', totalStrokes:8, strokeOrder:'横、竖、横、点、撇、横、横、竖' },
+  { hanzi:'使', pinyin:'shǐ', totalStrokes:8, strokeOrder:'撇、竖、横、竖、横折、横、撇、捺' },
+  { hanzi:'劲', pinyin:'jìn', totalStrokes:7, strokeOrder:'横撇、点、横、竖、提、横折钩、撇' },
+  { hanzi:'尿', pinyin:'niào', totalStrokes:7, strokeOrder:'横折、横、撇、竖钩、撇、点、撇、捺' },
+  // ===== 课文12 寓言二则 =====
+  { hanzi:'亡', pinyin:'wáng', totalStrokes:3, strokeOrder:'点、横、竖折' },
+  { hanzi:'牢', pinyin:'láo', totalStrokes:7, strokeOrder:'点、点、横钩、撇、横、横、竖' },
+  { hanzi:'钻', pinyin:'zuān', totalStrokes:10, strokeOrder:'撇、横、横、横、竖提、竖、横折、横、竖、横' },
+  { hanzi:'劝', pinyin:'quàn', totalStrokes:4, strokeOrder:'横撇、点、横折钩、撇' },
+  { hanzi:'丢', pinyin:'diū', totalStrokes:6, strokeOrder:'撇、横、竖、横、撇折、点' },
+  { hanzi:'告', pinyin:'gào', totalStrokes:7, strokeOrder:'撇、横、竖、横、竖、横折、横' },
+  { hanzi:'筋', pinyin:'jīn', totalStrokes:12, strokeOrder:'撇、横、点、撇、横、点、撇、横折钩、横、横、横折钩、撇' },
+  { hanzi:'疲', pinyin:'pí', totalStrokes:10, strokeOrder:'点、横、撇、点、横钩、撇、竖、横撇、捺' },
+  // ===== 课文13 画杨桃 =====
+  { hanzi:'图', pinyin:'tú', totalStrokes:8, strokeOrder:'竖、横折、点、点、横撇、撇、捺、横' },
+  { hanzi:'课', pinyin:'kè', totalStrokes:10, strokeOrder:'点、横折提、竖、横折、横、横、横、竖、撇、捺' },
+  { hanzi:'摆', pinyin:'bǎi', totalStrokes:13, strokeOrder:'横、竖钩、提、竖、横折、竖、竖、横、横、竖折、撇、竖、横' },
+  { hanzi:'座', pinyin:'zuò', totalStrokes:10, strokeOrder:'点、横、撇、点、撇、点、横、竖、横、横' },
+  { hanzi:'交', pinyin:'jiāo', totalStrokes:6, strokeOrder:'点、横、撇、点、撇、捺' },
+  { hanzi:'哈', pinyin:'hā', totalStrokes:9, strokeOrder:'竖、横折、横、撇、捺、横、竖、横折、横' },
+  { hanzi:'页', pinyin:'yè', totalStrokes:6, strokeOrder:'横、撇、竖、横折、撇、点' },
+  { hanzi:'抢', pinyin:'qiǎng', totalStrokes:7, strokeOrder:'横、竖钩、提、撇、捺、横折钩、竖弯钩' },
+  { hanzi:'嘻', pinyin:'xī', totalStrokes:15, strokeOrder:'竖、横折、横、横、竖、横、竖、横折、横、点、撇、横、竖、横折、横' },
+  // ===== 课文14 小马过河 =====
+  { hanzi:'愿', pinyin:'yuàn', totalStrokes:14, strokeOrder:'横、撇、撇、竖、横折、横、横、竖钩、撇、点、点、卧钩、点、点' },
+  { hanzi:'意', pinyin:'yì', totalStrokes:13, strokeOrder:'点、横、点、撇、横、竖、横折、横、横、点、卧钩、点、点' },
+  { hanzi:'麦', pinyin:'mài', totalStrokes:7, strokeOrder:'横、横、竖、横、撇、横撇、捺' },
+  { hanzi:'伯', pinyin:'bó', totalStrokes:7, strokeOrder:'撇、竖、撇、竖、横折、横、横' },
+  { hanzi:'刻', pinyin:'kè', totalStrokes:8, strokeOrder:'点、横、撇折、撇、点、竖、竖钩' },
+  { hanzi:'突', pinyin:'tū', totalStrokes:9, strokeOrder:'点、点、横钩、撇、点、横、撇、捺、点' },
+  { hanzi:'然', pinyin:'rán', totalStrokes:12, strokeOrder:'撇、横撇、点、点、撇、横撇、点、点、横、撇、捺、点' },
+  { hanzi:'掉', pinyin:'diào', totalStrokes:11, strokeOrder:'横、竖钩、提、竖、横折、横、横、横、竖、横折、横' },
+  // ===== 课文15 古诗二首 =====
+  { hanzi:'湖', pinyin:'hú', totalStrokes:12, strokeOrder:'点、点、提、横、竖、竖、横折、横、撇、横折钩、横、横' },
+  { hanzi:'莲', pinyin:'lián', totalStrokes:10, strokeOrder:'横、竖、竖、横、撇折、横、竖、点、横折折撇、捺' },
+  { hanzi:'穷', pinyin:'qióng', totalStrokes:7, strokeOrder:'点、点、横钩、撇、点、横折钩、撇' },
+  { hanzi:'荷', pinyin:'hé', totalStrokes:10, strokeOrder:'横、竖、竖、撇、竖、横、竖、横折、横、竖钩' },
+  { hanzi:'绝', pinyin:'jué', totalStrokes:9, strokeOrder:'撇折、撇折、提、撇、横撇、竖弯钩、横折、横、竖弯钩' },
+  { hanzi:'含', pinyin:'hán', totalStrokes:7, strokeOrder:'撇、捺、点、横撇、竖、横折、横' },
+  { hanzi:'岭', pinyin:'lǐng', totalStrokes:8, strokeOrder:'竖、竖折、竖、撇、捺、点、横撇、点' },
+  { hanzi:'吴', pinyin:'wú', totalStrokes:7, strokeOrder:'竖、横折、横、横、横、撇、捺' },
+  // ===== 课文16 雷雨 =====
+  { hanzi:'雷', pinyin:'léi', totalStrokes:13, strokeOrder:'横、点、横钩、竖、点、点、点、点、竖、横折、横、竖、横' },
+  { hanzi:'乌', pinyin:'wū', totalStrokes:4, strokeOrder:'撇、横折钩、竖折折钩、横' },
+  { hanzi:'黑', pinyin:'hēi', totalStrokes:12, strokeOrder:'竖、横折、点、撇、横、竖、横、横、点、点、点、点' },
+  { hanzi:'压', pinyin:'yā', totalStrokes:6, strokeOrder:'横、撇、横、竖、横、点' },
+  { hanzi:'垂', pinyin:'chuí', totalStrokes:8, strokeOrder:'撇、横、竖、横、竖、竖、横、横' },
+  { hanzi:'户', pinyin:'hù', totalStrokes:4, strokeOrder:'点、横折、横、撇' },
+  { hanzi:'迎', pinyin:'yíng', totalStrokes:7, strokeOrder:'撇、竖提、横折折撇、捺、横折钩、竖、横' },
+  { hanzi:'扑', pinyin:'pū', totalStrokes:5, strokeOrder:'横、竖钩、提、竖、点' },
+  // ===== 课文17 要是你在野外迷了路 =====
+  { hanzi:'指', pinyin:'zhǐ', totalStrokes:9, strokeOrder:'横、竖钩、提、撇、竖弯钩、竖、横折、横、横' },
+  { hanzi:'针', pinyin:'zhēn', totalStrokes:7, strokeOrder:'撇、横、横、横、竖提、横、竖' },
+  { hanzi:'碰', pinyin:'pèng', totalStrokes:13, strokeOrder:'横、撇、竖、横折、横、点、撇、横、竖、竖、横、横、横' },
+  { hanzi:'特', pinyin:'tè', totalStrokes:10, strokeOrder:'撇、横、竖、提、横、竖、横、横、竖钩、点' },
+  { hanzi:'积', pinyin:'jī', totalStrokes:10, strokeOrder:'撇、横、竖、撇、点、竖、横折、横、撇、点' },
+  { hanzi:'稠', pinyin:'chóu', totalStrokes:13, strokeOrder:'撇、横、竖、撇、点、竖、横折、横、竖、横、竖、横折、横' },
+  { hanzi:'稀', pinyin:'xī', totalStrokes:12, strokeOrder:'撇、横、竖、撇、点、撇、点、横、撇、竖、横折钩、竖' },
+  { hanzi:'导', pinyin:'dǎo', totalStrokes:6, strokeOrder:'横折、横、竖弯钩、横、竖钩、点' },
+  // ===== 课文18 太空生活趣事多 =====
+  { hanzi:'杯', pinyin:'bēi', totalStrokes:8, strokeOrder:'横、竖、撇、点、横、撇、竖、点' },
+  { hanzi:'失', pinyin:'shī', totalStrokes:5, strokeOrder:'撇、横、横、撇、捺' },
+  { hanzi:'洗', pinyin:'xǐ', totalStrokes:9, strokeOrder:'点、点、提、撇、横、竖、横、撇、竖弯钩' },
+  { hanzi:'澡', pinyin:'zǎo', totalStrokes:16, strokeOrder:'点、点、提、竖、横折、横、竖、横折、横、竖、横折、横、竖、撇、捺、横' },
+  { hanzi:'浴', pinyin:'yù', totalStrokes:10, strokeOrder:'点、点、提、撇、点、撇、捺、竖、横折、横' },
+  { hanzi:'桶', pinyin:'tǒng', totalStrokes:11, strokeOrder:'横、竖、撇、点、横撇、点、竖、横折钩、横、横、竖' },
+  { hanzi:'件', pinyin:'jiàn', totalStrokes:6, strokeOrder:'撇、竖、撇、横、横、竖' },
+  // ===== 课文19 大象的耳朵 =====
+  { hanzi:'扇', pinyin:'shàn', totalStrokes:10, strokeOrder:'点、横折、横、撇、横折钩、点、提、横折钩、撇、点' },
+  { hanzi:'慢', pinyin:'màn', totalStrokes:14, strokeOrder:'点、点、竖、竖、横折、横、横、竖、横折、竖、竖、横、横撇、捺' },
+  { hanzi:'遇', pinyin:'yù', totalStrokes:12, strokeOrder:'竖、横折、横、横、竖、横折钩、竖、竖、横折折撇、捺' },
+  { hanzi:'定', pinyin:'dìng', totalStrokes:8, strokeOrder:'点、点、横钩、横、竖、横、撇、捺' },
+  { hanzi:'病', pinyin:'bìng', totalStrokes:10, strokeOrder:'点、横、撇、点、横、竖、横折钩、撇、点、横' },
+  { hanzi:'睡', pinyin:'shuì', totalStrokes:13, strokeOrder:'竖、横折、横、横、横、撇、横、竖、横、竖、竖、横、横' },
+  { hanzi:'根', pinyin:'gēn', totalStrokes:10, strokeOrder:'横、竖、撇、点、横折、横、横、竖提、撇、捺' },
+  { hanzi:'痛', pinyin:'tòng', totalStrokes:12, strokeOrder:'点、横、撇、点、横撇、点、竖、横折钩、横、横、竖、横折钩、撇' },
+  // ===== 课文20 蜘蛛开店 =====
+  { hanzi:'店', pinyin:'diàn', totalStrokes:8, strokeOrder:'点、横、撇、竖、横、竖、横折、横' },
+  { hanzi:'决', pinyin:'jué', totalStrokes:6, strokeOrder:'点、提、横折、横、撇、捺' },
+  { hanzi:'商', pinyin:'shāng', totalStrokes:11, strokeOrder:'点、横、点、撇、竖、横折钩、撇、点、竖、横折、横' },
+  { hanzi:'夫', pinyin:'fū', totalStrokes:4, strokeOrder:'横、横、撇、捺' },
+  { hanzi:'终', pinyin:'zhōng', totalStrokes:8, strokeOrder:'撇折、撇折、提、撇、横撇、捺、点、点' },
+  { hanzi:'完', pinyin:'wán', totalStrokes:7, strokeOrder:'点、点、横钩、横、横、撇、竖弯钩' },
+  { hanzi:'换', pinyin:'huàn', totalStrokes:10, strokeOrder:'横、竖钩、提、撇、横撇、竖、横折、横、撇、捺' },
+  { hanzi:'期', pinyin:'qī', totalStrokes:12, strokeOrder:'横、竖、竖、横、横、横、撇、点、撇、横折钩、横、横' },
+  // ===== 课文21 青蛙卖泥塘 =====
+  { hanzi:'蛙', pinyin:'wā', totalStrokes:12, strokeOrder:'竖、横折、横、竖、横、提、横、竖、横、横、竖、横' },
+  { hanzi:'卖', pinyin:'mài', totalStrokes:8, strokeOrder:'横、竖、横撇、点、点、横、撇、点' },
+  { hanzi:'搬', pinyin:'bān', totalStrokes:13, strokeOrder:'横、竖钩、提、撇、撇、横折钩、点、横、点、撇、横折折、横撇、捺' },
+  { hanzi:'倒', pinyin:'dào', totalStrokes:10, strokeOrder:'撇、竖、横、撇折、点、横、竖、竖钩' },
+  { hanzi:'泉', pinyin:'quán', totalStrokes:9, strokeOrder:'撇、竖、横折、横、横、竖钩、撇、点、横' },
+  { hanzi:'破', pinyin:'pò', totalStrokes:10, strokeOrder:'横、撇、竖、横折、横、横撇、撇、竖、横撇、捺' },
+  { hanzi:'应', pinyin:'yīng', totalStrokes:7, strokeOrder:'点、横、撇、点、点、撇、横' },
+  // ===== 课文22 小毛虫 =====
+  { hanzi:'整', pinyin:'zhěng', totalStrokes:16, strokeOrder:'横、竖、横折、横、竖、撇、点、横撇、竖钩、提、撇、横、撇、捺、横、竖、横' },
+  { hanzi:'抽', pinyin:'chōu', totalStrokes:8, strokeOrder:'横、竖钩、提、竖、横折、横、竖、横' },
+  { hanzi:'纺', pinyin:'fǎng', totalStrokes:7, strokeOrder:'撇折、撇折、提、点、横、横折钩、撇' },
+  { hanzi:'织', pinyin:'zhī', totalStrokes:8, strokeOrder:'撇折、撇折、提、竖、横折、横、撇、点' },
+  { hanzi:'编', pinyin:'biān', totalStrokes:12, strokeOrder:'撇折、撇折、提、点、横折、横、撇、竖、竖、横折钩、横、竖' },
+  { hanzi:'怎', pinyin:'zěn', totalStrokes:9, strokeOrder:'撇、横、竖、横、横、点、卧钩、点、点' },
+  { hanzi:'布', pinyin:'bù', totalStrokes:5, strokeOrder:'横、撇、竖、横折钩、竖' },
+  { hanzi:'消', pinyin:'xiāo', totalStrokes:10, strokeOrder:'点、点、提、竖、点、撇、竖、横折钩、横、横' },
+  // ===== 课文23 祖先的摇篮 =====
+  { hanzi:'祖', pinyin:'zǔ', totalStrokes:9, strokeOrder:'点、横撇、竖、点、竖、横折、横、横、横' },
+  { hanzi:'啊', pinyin:'a', totalStrokes:10, strokeOrder:'竖、横折、横、横折折折钩、竖、横、竖、横折、横、竖钩' },
+  { hanzi:'浓', pinyin:'nóng', totalStrokes:9, strokeOrder:'点、点、提、点、横钩、撇、竖提、撇、捺' },
+  { hanzi:'望', pinyin:'wàng', totalStrokes:11, strokeOrder:'点、横、竖折、撇、横折钩、横、横、横、竖、横、横' },
+  { hanzi:'蓝', pinyin:'lán', totalStrokes:13, strokeOrder:'横、竖、竖、竖、横、竖、横折、竖、竖、提、撇、横、竖弯钩' },
+  { hanzi:'摘', pinyin:'zhāi', totalStrokes:14, strokeOrder:'横、竖钩、提、点、横、点、撇、竖、横折钩、横、竖、竖、横折、横' },
+  { hanzi:'掏', pinyin:'tāo', totalStrokes:11, strokeOrder:'横、竖钩、提、撇、横折钩、竖、横折、横、横、竖折、竖' },
+  { hanzi:'忆', pinyin:'yì', totalStrokes:4, strokeOrder:'点、点、竖、横折弯钩' },
+  // ===== 课文24 当世界年纪还小的时候 =====
+  { hanzi:'世', pinyin:'shì', totalStrokes:5, strokeOrder:'横、竖、竖、横、竖折' },
+  { hanzi:'界', pinyin:'jiè', totalStrokes:9, strokeOrder:'竖、横折、横、竖、横、撇、捺、撇、竖' },
+  { hanzi:'功', pinyin:'gōng', totalStrokes:5, strokeOrder:'横、竖、提、横折钩、撇' },
+  { hanzi:'反', pinyin:'fǎn', totalStrokes:4, strokeOrder:'撇、撇、横撇、捺' },
+  { hanzi:'复', pinyin:'fù', totalStrokes:9, strokeOrder:'撇、横、竖、横折、横、横、撇、横撇、捺' },
+  { hanzi:'弄', pinyin:'nòng', totalStrokes:7, strokeOrder:'横、横、竖、横、撇、竖' },
+  { hanzi:'简', pinyin:'jiǎn', totalStrokes:13, strokeOrder:'撇、横、点、撇、横、点、点、竖、横折钩、竖、横折、横、横' },
+  { hanzi:'由', pinyin:'yóu', totalStrokes:5, strokeOrder:'竖、横折、横、竖、横' },
+  { hanzi:'式', pinyin:'shì', totalStrokes:6, strokeOrder:'横、横、竖、提、斜钩、点' }
+]}
+};
+
+/* ============================================================
+   工具
+   ============================================================ */
+const ALL_STROKES = ['横','竖','撇','捺','点','提','横折','竖钩','弯钩','横折钩',
+  '竖折','撇折','横撇','竖弯钩','斜钩','卧钩','横钩','竖提','横折弯钩','撇点','竖弯','竖折折钩','横折提'];
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* 从 strokeOrder 解析出笔画数组 */
+function parseStrokes(strokeOrder) {
+  return strokeOrder.split('、').map(s => s.trim()).filter(Boolean);
+}
+
+/* 构建题库：读音/拼音/总笔画选项自动补全；笔画题在每局中随机出题 */
+function buildQuestions(coreWords) {
+  const allPinyin = coreWords.map(w => w.pinyin);
+  const allChars = coreWords.map(w => w.hanzi);
+  return coreWords.map(w => {
+    const otherChars = allChars.filter(c => c !== w.hanzi);
+    const otherPinyin = allPinyin.filter(p => p !== w.pinyin);
+
+    const readingOpts = shuffle([w.hanzi, ...shuffle(otherChars).slice(0, 2)]);
+    const pinyinOpts = shuffle([w.pinyin, ...shuffle(otherPinyin).slice(0, 2)]);
+
+    const totalSet = new Set([w.totalStrokes]);
+    [w.totalStrokes-1, w.totalStrokes+1, w.totalStrokes-2, w.totalStrokes+2].forEach(c => {
+      if (c > 0 && c <= 15 && totalSet.size < 3) totalSet.add(c);
+    });
+    const totalOpts = shuffle(Array.from(totalSet));
+
+    return {
+      hanzi: w.hanzi, pinyin: w.pinyin, totalStrokes: w.totalStrokes,
+      strokeOrder: w.strokeOrder,
+      strokes: parseStrokes(w.strokeOrder),  // 完整笔画列表
+      readingOptions: readingOpts, readingAnswer: readingOpts.indexOf(w.hanzi),
+      pinyinOptions: pinyinOpts, pinyinAnswer: pinyinOpts.indexOf(w.pinyin),
+      totalOptions: totalOpts, totalAnswer: totalOpts.indexOf(w.totalStrokes)
+    };
+  });
+}
+
+/* ============================================================
+   状态
+   ============================================================ */
+const STAGE_NAMES = ['第一关 · 听音辨字', '第二关 · 选对拼音', '第三关 · 笔画闯关'];
+const STAGE_CSS = ['stage-1', 'stage-2', 'stage-3'];
+const GAME_SECONDS = 5 * 60;
+
+let state = {
+  stageKey: null,
+  questions: [],
+  order: [],
+  current: 0,
+  step: 0,
+  score: 0,
+  locked: false,
+  timeLeft: GAME_SECONDS,
+  timerId: null,
+  finished: false,
+  timeUp: false,
+  // 当前笔画题的临时数据
+  strokeAskIndex: 0,
+  strokeAskName: '',
+  strokeOptions: [],
+  strokeAnswer: 0
+};
+
+const $main = document.getElementById('main');
+const $scoreNum = document.getElementById('scoreNum');
+const $progressBar = document.getElementById('progressBar');
+const $subTitle = document.getElementById('subTitle');
+const $timerBox = document.getElementById('timerBox');
+const $timerNum = document.getElementById('timerNum');
+
+/* ============================================================
+   首页
+   ============================================================ */
+function renderStart() {
+  stopTimer();
+  state.stageKey = null;
+  state.finished = false;
+  $subTitle.textContent = '选择学期开始';
+  $timerNum.textContent = '5:00';
+  $timerBox.classList.remove('urgent');
+  updateScore(0);
+  updateProgress(0);
+
+  const keys = ['s1','s2','s3','s4'];
+  const buttons = keys.map(k => {
+    const s = STAGES[k];
+    const n = s.core.length;
+    const disabled = n === 0 ? 'disabled' : '';
+    return `
+      <button class="stage-btn ${s.color}" data-key="${k}" ${disabled}>
+        <span class="icon">${s.icon}</span>
+        <span class="name">${s.name}</span>
+        <span class="count">${n} 个生字</span>
+      </button>`;
+  }).join('');
+
+  $main.innerHTML = `
+    <div class="start-screen">
+      <div class="mascot">🐼</div>
+      <h2>生字识字大闯关</h2>
+      <p>每局 5 分钟，每个字 4 小问<br>听音辨字 → 选对拼音 → 总笔画 → 指定笔画</p>
+      <div class="stage-grid">${buttons}</div>
+      <div class="hint">选择学期后开始计时，时间到自动结算</div>
+    </div>`;
+
+  document.querySelectorAll('.stage-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      startGame(btn.dataset.key);
+    });
+  });
+}
+
+/* ============================================================
+   开始
+   ============================================================ */
+function startGame(stageKey) {
+  const s = STAGES[stageKey];
+  state.stageKey = stageKey;
+  state.questions = buildQuestions(s.core);
+  state.order = shuffle(state.questions.map((_, i) => i));
+  state.current = 0; state.step = 0; state.score = 0;
+  state.locked = false; state.finished = false; state.timeUp = false;
+  state.timeLeft = GAME_SECONDS;
+
+  $subTitle.textContent = s.name + ' · 5分钟挑战';
+  updateScore(0);
+  updateProgress(0);
+  updateTimerDisplay();
+  $timerBox.classList.remove('urgent');
+  startTimer();
+  renderStep();
+}
+
+/* ============================================================
+   计时器
+   ============================================================ */
+function startTimer() {
+  stopTimer();
+  state.timerId = setInterval(() => {
+    state.timeLeft--;
+    updateTimerDisplay();
+    if (state.timeLeft <= 30) $timerBox.classList.add('urgent');
+    if (state.timeLeft <= 0) {
+      stopTimer();
+      state.timeUp = true;
+      renderResult();
+    }
+  }, 1000);
+}
+function stopTimer() {
+  if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+}
+function updateTimerDisplay() {
+  const m = Math.floor(Math.max(0, state.timeLeft) / 60);
+  const s = Math.max(0, state.timeLeft) % 60;
+  $timerNum.textContent = `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/* ============================================================
+   答题
+   ============================================================ */
+function currentQuestion() { return state.questions[state.order[state.current]]; }
+
+function qCounterHTML() {
+  return `<span class="qcount">第 ${state.current + 1} / ${state.questions.length} 个字</span>`;
+}
+
+function renderStep() {
+  if (state.finished) return;
+  state.locked = false;
+  const q = currentQuestion();
+  const totalSteps = state.questions.length * 4;
+  const doneSteps = state.current * 4 + state.step;
+  updateProgress(doneSteps / totalSteps * 100);
+  if (state.step === 0) renderReading(q);
+  else if (state.step === 1) renderPinyin(q);
+  else if (state.step === 2) renderTotal(q);
+  else renderStroke(q);
+}
+
+function renderReading(q) {
+  $main.innerHTML = `
+    <div class="stage-label ${STAGE_CSS[0]}">${STAGE_NAMES[0]}</div>${qCounterHTML()}
+    <div class="question-title">请选出下面读音对应的汉字：</div>
+    <div class="pinyin-display">${q.pinyin}</div>
+    <div class="options grid-3" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="stroke-hint" id="strokeHint"></div>
+    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一关 →</button></div>
+    ${renderDots()}`;
+  const $opts = document.getElementById('options');
+  q.readingOptions.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn opt-btn'; btn.textContent = text;
+    btn.addEventListener('click', () => handleChoice(btn, i === q.readingAnswer, q, 'reading'));
+    $opts.appendChild(btn);
+  });
+}
+
+function renderPinyin(q) {
+  $main.innerHTML = `
+    <div class="stage-label ${STAGE_CSS[1]}">${STAGE_NAMES[1]}</div>${qCounterHTML()}
+    <div class="question-title">请选出下面汉字的正确读音：</div>
+    <div class="hanzi-display">${q.hanzi}</div>
+    <div class="options grid-3" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="stroke-hint" id="strokeHint"></div>
+    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一关 →</button></div>
+    ${renderDots()}`;
+  const $opts = document.getElementById('options');
+  q.pinyinOptions.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn opt-btn small'; btn.textContent = text;
+    btn.addEventListener('click', () => handleChoice(btn, i === q.pinyinAnswer, q, 'pinyin'));
+    $opts.appendChild(btn);
+  });
+}
+
+function renderTotal(q) {
+  $main.innerHTML = `
+    <div class="stage-label ${STAGE_CSS[2]}">${STAGE_NAMES[2]}</div>${qCounterHTML()}
+    <div class="question-title">汉字 <span class="big">${q.hanzi}</span> 一共有几笔？</div>
+    <div class="options grid-3" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="stroke-hint" id="strokeHint"></div>
+    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一关 →</button></div>
+    ${renderDots()}`;
+  const $opts = document.getElementById('options');
+  q.totalOptions.forEach((num, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn opt-btn small'; btn.textContent = num + ' 笔';
+    btn.addEventListener('click', () => handleChoice(btn, i === q.totalAnswer, q, 'total'));
+    $opts.appendChild(btn);
+  });
+}
+
+/* ---- 第4小问：随机问某一笔 ---- */
+function renderStroke(q) {
+  const strokes = q.strokes;
+  const idx = Math.floor(Math.random() * strokes.length); // 0-based
+  const askName = strokes[idx];
+
+  state.strokeAskIndex = idx;
+  state.strokeAskName = askName;
+
+  // 干扰项：从常用笔画池里抽2个不同于正确答案的
+  const pool = ALL_STROKES.filter(s => s !== askName);
+  const distractors = shuffle(pool).slice(0, 2);
+  const opts = shuffle([askName, ...distractors]);
+  state.strokeOptions = opts;
+  state.strokeAnswer = opts.indexOf(askName);
+
+  $main.innerHTML = `
+    <div class="stage-label ${STAGE_CSS[2]}">${STAGE_NAMES[2]}</div>${qCounterHTML()}
+    <div class="question-title">汉字 <span class="big">${q.hanzi}</span> 的第 <b>${idx + 1}</b> 笔是什么笔画？</div>
+    <div class="options grid-3" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="stroke-hint" id="strokeHint"></div>
+    <div class="next-wrap"><button class="btn btn-next" id="btnNext">下一题 →</button></div>
+    ${renderDots()}`;
+
+  const $opts = document.getElementById('options');
+  opts.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn opt-btn small'; btn.textContent = text;
+    btn.addEventListener('click', () => handleChoice(btn, i === state.strokeAnswer, q, 'stroke'));
+    $opts.appendChild(btn);
+  });
+}
+
+function handleChoice(btn, isRight, q, type) {
+  if (state.locked || state.finished) return;
+  state.locked = true;
+  const $feedback = document.getElementById('feedback');
+  const $hint = document.getElementById('strokeHint');
+  const $next = document.getElementById('btnNext');
+  document.querySelectorAll('#options .opt-btn').forEach(b => b.classList.add('disabled'));
+
+  let correctText = '';
+  let answerIdx = 0;
+
+  if (type === 'reading') { correctText = q.hanzi; answerIdx = q.readingAnswer; }
+  else if (type === 'pinyin') { correctText = q.pinyin; answerIdx = q.pinyinAnswer; }
+  else if (type === 'total') { correctText = q.totalStrokes + ' 笔'; answerIdx = q.totalAnswer; }
+  else { correctText = state.strokeAskName; answerIdx = state.strokeAnswer; }
+
+  if (isRight) {
+    btn.classList.add('correct');
+    state.score++;
+    updateScore(state.score);
+    $feedback.className = 'feedback ok show';
+    $feedback.innerHTML = '<span class="icon">✅</span> 答对啦！真棒！';
+  } else {
+    btn.classList.add('wrong');
+    const allBtns = document.querySelectorAll('#options .opt-btn');
+    if (allBtns[answerIdx]) allBtns[answerIdx].classList.add('correct');
+    $feedback.className = 'feedback no show';
+    $feedback.innerHTML = `<span class="icon">❌</span> 正确答案是「${correctText}」`;
+  }
+
+  if (type === 'total' || type === 'stroke' || !isRight) {
+    $hint.classList.add('show');
+    let hintHTML = `<b>笔顺：</b>${q.strokeOrder}<br><b>总笔画：</b>${q.totalStrokes} 笔`;
+    if (type === 'stroke') {
+      hintHTML += `<br><b>第${state.strokeAskIndex + 1}笔：</b>${state.strokeAskName}`;
+    }
+    $hint.innerHTML = hintHTML;
+  }
+
+  $next.classList.add('show');
+  if (type === 'stroke') { $next.textContent = '下一个字 →'; $next.onclick = goNextChar; }
+  else { $next.textContent = '下一关 →'; $next.onclick = goNextStep; }
+}
+
+function goNextStep() {
+  if (state.finished) return;
+  state.step++;
+  if (state.step > 3) { goNextChar(); return; }
+  renderStep();
+}
+
+function goNextChar() {
+  if (state.finished) return;
+  state.current++;
+  state.step = 0;
+  if (state.current >= state.questions.length) {
+    stopTimer();
+    renderResult();
+  } else {
+    renderStep();
+  }
+}
+
+function renderDots() {
+  let html = '<div class="dots">';
+  const total = state.questions.length;
+  for (let i = 0; i < total; i++) {
+    let cls = 'dot';
+    if (i < state.current) cls += ' done';
+    if (i === state.current) cls += ' active';
+    html += `<span class="${cls}"></span>`;
+  }
+  return html + '</div>';
+}
+
+function updateScore(n) { $scoreNum.textContent = n; }
+function updateProgress(pct) { $progressBar.style.width = Math.min(100, Math.max(0, pct)) + '%'; }
+
+/* ============================================================
+   结算
+   ============================================================ */
+function renderResult() {
+  if (state.finished) return;
+  state.finished = true;
+  stopTimer();
+  updateProgress(100);
+
+  const score = state.score;
+  const answeredChars = Math.min(state.current + (state.step > 0 ? 1 : 0), state.questions.length);
+  const maxPossible = answeredChars * 4;
+  const pct = maxPossible > 0 ? score / maxPossible : 0;
+
+  let stars, comment, emoji;
+  if (score === 0) { stars='⭐'; emoji='🌱'; comment='没关系，多读多写，下次一定会更好！'; }
+  else if (pct >= 0.9) { stars='⭐⭐⭐⭐⭐'; emoji='🏆'; comment='太厉害了！生字识字小达人就是你！'; }
+  else if (pct >= 0.75) { stars='⭐⭐⭐⭐'; emoji='🎉'; comment='真棒！继续加油，你离满分只差一点点！'; }
+  else if (pct >= 0.5) { stars='⭐⭐⭐'; emoji='💪'; comment='不错哦！把答错的生字再复习一遍吧。'; }
+  else { stars='⭐⭐'; emoji='🌱'; comment='没关系，多读多写，下次一定会更好！'; }
+
+  const timeUpHTML = state.timeUp
+    ? `<div class="timeup">⏰ 时间到！5 分钟挑战结束</div>`
+    : `<div class="timeup">🎯 本阶段题目已全部完成</div>`;
+
+  $main.innerHTML = `
+    <div class="result-screen">
+      <div class="trophy">${emoji}</div>
+      <h2>闯关完成！</h2>
+      ${timeUpHTML}
+      <div class="final-score">${score} <span>分</span></div>
+      <div class="stars">${stars}</div>
+      <div class="comment">${comment}</div>
+      <div>
+        <button class="btn btn-restart" id="btnRestart">再玩一次 🔄</button>
+        <button class="btn btn-home" id="btnHome">返回首页 🏠</button>
+      </div>
+    </div>`;
+
+  document.getElementById('btnRestart').addEventListener('click', () => {
+    if (state.stageKey) startGame(state.stageKey);
+    else renderStart();
+  });
+  document.getElementById('btnHome').addEventListener('click', renderStart);
+
+  if (pct >= 0.75 && score > 0) fireConfetti();
+}
+
+function fireConfetti() {
+  const emojis = ['🎉','⭐','🌟','✨','🎊','💛','🧡'];
+  for (let i = 0; i < 26; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.animationDuration = (2 + Math.random() * 2) + 's';
+    el.style.animationDelay = (Math.random() * 0.8) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+  }
+}
+
+/* ============================================================
+   启动
+   ============================================================ */
+renderStart();
+</script>
+</body>
+</html>
